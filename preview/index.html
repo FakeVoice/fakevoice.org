@@ -101,6 +101,16 @@ p { margin: 0; max-width: 34em; }
 .box svg { width: 16px; height: 16px; opacity: 0; }
 .check input:checked + label .box { background: var(--fg); }
 .check input:checked + label .box svg { opacity: 1; color: var(--bg); }
+.what { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; max-width: 34em; }
+.checks { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.check label { font-weight: 500; }
+.inline { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; color: var(--fg); }
+.inline:focus-visible { outline: 3px solid var(--clone); outline-offset: 2px; }
+.draft { font: 500 .78rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--clone); }
+.panel h3 { padding-top: 8px; }
+.panel table { border-collapse: collapse; font-size: .95rem; }
+.panel th, .panel td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); }
+.tablewrap { overflow-x: auto; }
 .hint { color: var(--clone); font-size: .95rem; min-height: 1.5em; }
 
 /* Call screen */
@@ -198,8 +208,81 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
       <li>Nothing can be downloaded, exported, or shared, by you or anyone else.</li>
       <li>You cannot type text for the voice to say. What it says is fixed in advance.</li>
       <li>No reusable voice model is kept. Each session starts from nothing.</li>
-      <li>The recording and the generated voice are deleted when the session ends, and the site only tells you they are deleted after the system confirms it.</li>
+      <li>The recording and the generated voice are deleted right after the callback, and never kept longer than 10 minutes. The site only tells you they are deleted after the system confirms it.</li>
     </ul>
+  </div>
+</section>
+
+<section class="panel" id="panel-privacy" hidden aria-label="Privacy Policy">
+  <div class="wrap">
+    <header class="top"><span class="brand">FakeVoice</span><button class="ghost" type="button" data-close>Close</button></header>
+    <span class="draft">Draft · 2026-11-18 · not yet reviewed by a lawyer</span>
+    <h2>Privacy Policy</h2>
+    <p>FakeVoice ("we") runs fakevoice.org and the FakeVoice phone experience. This policy explains what we collect, why, how long we keep it, and who processes it for us.</p>
+    <h3>Who can use FakeVoice</h3>
+    <p>FakeVoice is for people 13 and older. We do not knowingly collect information from children under 13. If you are under 18, a parent or guardian should know you are using it. FakeVoice is not available to people in Illinois.</p>
+    <h3>What we collect and how long we keep it</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead>
+      <tbody>
+        <tr><td>Your call audio (only the parts where you speak)</td><td>To make a temporary AI copy of your voice for the callback</td><td>Deleted right after the callback ends or fails; never more than 10 minutes</td></tr>
+        <tr><td>The temporary AI voice copy</td><td>To speak to you in the callback</td><td>Deleted at the same time as the audio</td></tr>
+        <tr><td>Your phone number</td><td>To call you back</td><td>Used only for the callback; not stored by us after it (our phone provider keeps call records, see below)</td></tr>
+        <tr><td>Session record (random session ID, consent text version, the boxes you checked, time, the call's provider ID)</td><td>To show that you agreed before we recorded</td><td>Kept as a consent record; contains no audio and no phone number</td></tr>
+        <tr><td>Basic website logs from our hosting providers</td><td>Security and reliability</td><td>As set by those providers</td></tr>
+      </tbody>
+    </table></div>
+    <p>We do not sell or share your information for advertising, we do not use it to train AI models, and we do not let anyone download your recording or voice copy. Your voice copy is never used to call anyone except you, once, in the callback you asked for.</p>
+    <p>We do not keep transcripts of your call. During the call, speech is converted to text in real time so the AI can respond; that text is not stored by us.</p>
+    <h3>Service providers</h3>
+    <p>We use these providers only to run the experience:</p>
+    <ul>
+      <li>Twilio (phone calls; keeps call records such as numbers, times and durations under its own policy)</li>
+      <li>Deepgram (real-time speech-to-text during the call)</li>
+      <li>OpenAI (generates the questions' follow-ups during the first call)</li>
+      <li>Fish Audio (creates the temporary voice copy and speaks it; we delete the copy through its API)</li>
+      <li>Cloudflare and GitHub (website hosting and network)</li>
+    </ul>
+    <h3>Your choices</h3>
+    <ul>
+      <li>Don't check the consent boxes, and nothing is recorded.</li>
+      <li>Hang up at any time; anything recorded so far is deleted.</li>
+      <li>Questions or deletion requests: hello@fakevoice.org.</li>
+    </ul>
+    <h3>Changes</h3>
+    <p>We will update this page and its date if anything changes.</p>
+  </div>
+</section>
+
+<section class="panel" id="panel-terms" hidden aria-label="Terms of Use">
+  <div class="wrap">
+    <header class="top"><span class="brand">FakeVoice</span><button class="ghost" type="button" data-close>Close</button></header>
+    <span class="draft">Draft · 2026-11-18 · not yet reviewed by a lawyer</span>
+    <h2>Terms of Use</h2>
+    <p>By using fakevoice.org or calling the FakeVoice number, you agree to these terms.</p>
+    <h3>What FakeVoice is</h3>
+    <p>An educational experience that shows how convincing AI-generated voices can be, so people can protect themselves from voice-cloning scams. It is not a voice-cloning service.</p>
+    <h3>Who can use it</h3>
+    <ul>
+      <li>You must be 13 or older. If you are under 18, a parent or guardian should know you are using it.</li>
+      <li>You must not be in Illinois.</li>
+      <li>You must use your own voice and call from your own phone number.</li>
+    </ul>
+    <h3>What you agree not to do</h3>
+    <ul>
+      <li>Use someone else's voice, play a recording, or call from a number that isn't yours.</li>
+      <li>Try to capture, record or extract the AI-generated voice from the callback.</li>
+      <li>Try to make the system say harmful, deceptive or abusive things, or to target other people.</li>
+      <li>Interfere with or overload the service.</li>
+    </ul>
+    <h3>How your voice is handled</h3>
+    <p>See the <button type="button" class="inline" data-panel="privacy">Privacy Policy</button>. In short: your call is recorded, a temporary AI copy of your voice is used once to call you back, and both are deleted right after.</p>
+    <h3>No warranty</h3>
+    <p>FakeVoice is provided as is, for free, as an educational experiment. It may be unavailable or change at any time. Calls may incur charges from your phone carrier (for example international calls).</p>
+    <h3>Limitation of liability</h3>
+    <p>To the extent the law allows, FakeVoice and the people running it are not liable for indirect or consequential damages arising from using it.</p>
+    <h3>Contact</h3>
+    <p>hello@fakevoice.org</p>
   </div>
 </section>
 
@@ -223,22 +306,20 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
 <template id="t-consent">
   <section class="screen">
     <h2>Before you continue</h2>
-    <p class="lede">FakeVoice temporarily processes your voice using AI as part of this experience. Your voice will only be used during this session.</p>
-    <div>
-      <p class="label" style="margin-bottom:10px">It will not be</p>
-      <ul class="terms">
-        <li>downloaded by you or other users</li>
-        <li>used to contact another person</li>
-        <li>reused in another session</li>
-        <li>kept after the experience is complete</li>
-      </ul>
+    <p class="lede">FakeVoice is a short experience about AI-generated voices. Here is exactly what happens:</p>
+    <ul class="what">
+      <li>You call our number and answer a few everyday questions. <strong>The call is recorded.</strong></li>
+      <li><strong>AI uses your recording to make a temporary copy of your voice.</strong></li>
+      <li><strong>Shortly after, we call you back on the number you called from, using an AI-generated voice.</strong></li>
+      <li>The recording and the voice copy are <strong>deleted right after the callback</strong>, and never kept longer than 10 minutes. You can't download them, and they are never used to call anyone else or reused later.</li>
+    </ul>
+    <p class="small muted">We keep a record that you agreed (time, this text's version, and the boxes below). It contains no recording and no phone number. See our <button type="button" class="inline" data-panel="privacy">Privacy Policy</button> and <button type="button" class="inline" data-panel="terms">Terms</button>.</p>
+    <div class="checks">
+      <div class="check"><input type="checkbox" id="c-age"><label for="c-age"><span class="box"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span>I am 13 or older. If I am under 18, a parent or guardian knows I am using FakeVoice.</span></label></div>
+      <div class="check"><input type="checkbox" id="c-il"><label for="c-il"><span class="box"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span>I am not in Illinois right now and don't live there.</span></label></div>
+      <div class="check"><input type="checkbox" id="c-consent"><label for="c-consent"><span class="box"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span>I agree to this recording, to the temporary AI copy of my voice, and to receiving the AI-voice callback described above.</span></label></div>
     </div>
-    <p>Your temporary voice data will be automatically deleted after the session.</p>
-    <div class="check">
-      <input type="checkbox" id="consent-box">
-      <label for="consent-box"><span class="box"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span>I understand and consent to the temporary processing of my voice.</label>
-    </div>
-    <p class="small muted">You must use your own voice and your own phone number to participate.</p>
+    <p class="small muted">You must use your own voice and your own phone number.</p>
     <div class="actions">
       <button class="btn" type="button" id="consent-go" aria-disabled="true">Continue</button>
       <span class="hint" id="consent-hint" role="status"></span>
@@ -362,6 +443,8 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
    Anywhere else (e.g. the claude.ai preview) the page runs in demo mode and the
    prototype bar stands in for the phone system. The server's state is authoritative. */
 const API = "https://voice.fakevoice.org";
+/* Must match the consent text on screen (fakevoice/docs/legal/consent-screen.md); bump together. */
+const CONSENT = { consent: true, age_13_or_older: true, not_in_illinois: true, consent_version: "2026-11-18" };
 const LIVE = /^(localhost|127\.0\.0\.1|(www\.)?fakevoice\.org)$/.test(location.hostname) && !/demo/.test(location.hash);
 const STATES = ["waiting_for_call", "call_connected", "call_in_progress", "call_completed", "processing",
   "callback_ringing", "callback_active", "callback_completed", "deleting", "deletion_confirmed",
@@ -369,7 +452,7 @@ const STATES = ["waiting_for_call", "call_connected", "call_in_progress", "call_
 
 const LiveBackend = {
   async createSession() {
-    const r = await fetch(API + "/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ consent: true }) });
+    const r = await fetch(API + "/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONSENT) });
     if (!r.ok) throw new Error("HTTP " + r.status);
     const j = await r.json();
     return { id: j.id, code: fmtCode(j.code), phone: j.phone, expiresAt: typeof j.expires_at === "number" ? j.expires_at * 1000 : Date.parse(j.expires_at) };
@@ -474,10 +557,13 @@ function wire(screen) {
   stage.querySelectorAll("[data-panel]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.panel)));
 
   if (screen === "consent") {
-    const box = document.getElementById("consent-box"), go = document.getElementById("consent-go"), hint = document.getElementById("consent-hint");
-    box.addEventListener("change", () => { go.setAttribute("aria-disabled", String(!box.checked)); hint.textContent = ""; });
+    const boxes = ["c-age", "c-il", "c-consent"].map(id => document.getElementById(id));
+    const go = document.getElementById("consent-go"), hint = document.getElementById("consent-hint");
+    const allChecked = () => boxes.every(b => b.checked);
+    boxes.forEach(b => b.addEventListener("change", () => { go.setAttribute("aria-disabled", String(!allChecked())); hint.textContent = ""; }));
     go.addEventListener("click", async () => {
-      if (!box.checked) { hint.textContent = "Tick the box above to continue."; return; }
+      if (!boxes[0].checked) { hint.textContent = "FakeVoice is for people 13 and older."; return; }
+      if (!allChecked()) { hint.textContent = "Check all three boxes to continue."; return; }
       if (go.dataset.busy) return;
       go.dataset.busy = "1"; hint.textContent = "";
       try {
@@ -524,7 +610,10 @@ function openPanel(name) {
   lastFocus = document.activeElement;
   const p = document.getElementById("panel-" + name); p.hidden = false; p.querySelector("[data-close]").focus();
 }
-document.querySelectorAll("nav.links [data-panel]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.panel)));
+document.querySelectorAll("nav.links [data-panel], .panel [data-panel]").forEach(b => b.addEventListener("click", () => {
+  const from = b.closest(".panel"); if (from) from.hidden = true;
+  openPanel(b.dataset.panel);
+}));
 document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => {
   b.closest(".panel").hidden = true; if (lastFocus) lastFocus.focus();
 }));
