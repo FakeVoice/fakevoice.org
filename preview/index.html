@@ -689,8 +689,8 @@ function wire(screen) {
 /* ---- Pass it on -------------------------------------------------------------------
    Two spoiler-free messages. Neither says the callback uses your own voice: that
    surprise is the experience. ?from= tells us which button a visitor came from and
-   carries nothing about the sender. Switch SHARE_URL to the root at public launch. */
-const SHARE_URL = "https://fakevoice.org/preview/";
+   carries nothing about the sender. Points at the public root, not /preview/. */
+const SHARE_URL = "https://fakevoice.org/";
 const SHARES = {
   family: {
     text: "Quick family rule: if anyone calls sounding like me (or any of us) and asks for money or help in a hurry, hang up and call me back on my usual number, even if the voice sounds exactly right. AI can copy voices now. Let's pick a family code word we can ask for.",
