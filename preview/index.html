@@ -153,6 +153,28 @@ p { margin: 0; max-width: 34em; }
 .deletion strong { display: block; }
 hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100%; }
 
+/* Feedback (final screen) */
+.feedback { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.feedback fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
+.feedback legend { padding: 0; font-weight: 600; }
+.scale { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.scale input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.scale label { display: grid; place-items: center; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+  font: 500 .95rem/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--fg); background: var(--bg); }
+.scale input:checked + label { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.scale input:focus-visible + label { outline: 3px solid var(--clone); outline-offset: 2px; }
+.scale-ends { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .85rem; }
+.feedback .field { display: grid; gap: 8px; }
+.feedback .field label { font-weight: 600; }
+.feedback textarea { width: 100%; min-height: 7.5em; resize: vertical; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--fg); font: 400 1rem/1.5 var(--body); /* 16px+ keeps iOS from zooming on focus */ }
+.feedback textarea:focus-visible { outline: 3px solid var(--clone); outline-offset: 2px; }
+.feedback .meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.feedback .count { font-variant-numeric: tabular-nums; }
+.feedback .actions { padding-top: 0; }
+.feedback.sent { display: flex; gap: 14px; align-items: flex-start; }
+.feedback.sent .dot { margin-top: 8px; background: var(--ok); }
+
 /* Info panels (About / Safety) */
 .panel { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; padding-inline: 20px; padding-block: calc(env(safe-area-inset-top, 0px) + 20px) 96px; z-index: 5; }
 .panel .wrap { display: grid; gap: 20px; }
@@ -428,6 +450,26 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
     <h2>Thanks for taking part.</h2>
     <p class="lede">The next time a familiar voice asks for something urgent, you'll know what to do.</p>
     <p class="remember">Hang up → Call back → Verify</p>
+    <form class="feedback" id="feedback" novalidate>
+      <h3>How was it?</h3>
+      <fieldset>
+        <legend>How much did the voice sound like you?</legend>
+        <div class="scale" id="fb-scale"></div>
+        <div class="scale-ends" aria-hidden="true"><span>Not at all</span><span>Exactly like me</span></div>
+      </fieldset>
+      <div class="field">
+        <label for="fb-text">Anything you'd like to tell us?</label>
+        <textarea id="fb-text" maxlength="2000" placeholder="What surprised you, what felt off, what you'd change…"></textarea>
+        <div class="meta small muted">
+          <span>Please don't include personal details. Optional.</span>
+          <span class="count" id="fb-count" aria-live="off">0 / 2000</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit" id="fb-send">Send feedback</button>
+        <span class="hint" id="fb-hint" role="status"></span>
+      </div>
+    </form>
     <div class="actions">
       <button class="ghost" type="button" data-panel="safety">How your voice was handled</button>
     </div>
@@ -468,12 +510,20 @@ const LiveBackend = {
     STATES.forEach(name => es.addEventListener(name, () => onState(name)));
     return () => es.close();
   },
+  /* 204 stored · 400 bad input · 404 session forgotten (30 min after finishing) · 409 already sent */
+  async sendFeedback(id, text, rating) {
+    const body = { session_id: id, text };
+    if (rating) body.rating = rating;
+    const r = await fetch(API + "/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return r.status;
+  },
 };
 const DemoBackend = {
   async createSession() {
     const n = String(Math.floor(Math.random() * 1e6)).padStart(6, "0");
     return { id: "demo", code: fmtCode(n), phone: "+16506683304", expiresAt: Date.now() + 10 * 60 * 1000 };
   },
+  async sendFeedback() { await new Promise(r => setTimeout(r, 400)); return 204; },
 };
 const backend = LIVE ? LiveBackend : DemoBackend;
 
@@ -567,7 +617,7 @@ function wire(screen) {
       if (go.dataset.busy) return;
       go.dataset.busy = "1"; hint.textContent = "";
       try {
-        state.session = await backend.createSession(); state.deletion = "deleting";
+        state.session = await backend.createSession(); state.deletion = "deleting"; state.feedback = null;
         show("call"); listen();
       } catch (e) {
         hint.textContent = "We couldn't start a session. Check your connection and try again.";
@@ -597,6 +647,54 @@ function wire(screen) {
     timers.push(setTimeout(() => { const s = document.getElementById("slow"); if (s) s.hidden = false; }, 20000));
   }
   if (screen === "reveal") renderDeletion();
+  if (screen === "done") wireFeedback();
+}
+
+/* ---- Feedback ---------------------------------------------------------------------
+   One per session, server-side. The API needs text; the rating alone is not enough,
+   so a rating with no words is sent with a short placeholder text. */
+const FB_SENT = ["Thank you. Your feedback was sent.", "It is stored only with this session's random ID, never with your phone number."];
+function renderFeedbackSent(form, lines) {
+  form.className = "feedback sent"; form.replaceChildren();
+  const dot = document.createElement("span"); dot.className = "dot";
+  const box = document.createElement("div");
+  const strong = document.createElement("strong"); strong.textContent = lines[0];
+  const span = document.createElement("span"); span.className = "muted small"; span.textContent = lines[1];
+  box.append(strong, span); form.append(dot, box);
+}
+function wireFeedback() {
+  const form = document.getElementById("feedback");
+  if (!form) return;
+  if (state.feedback === "sent") { renderFeedbackSent(form, FB_SENT); return; }
+  if (!state.session) { form.hidden = true; return; }
+  const scale = document.getElementById("fb-scale");
+  for (let i = 1; i <= 10; i++) {
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = "fb-rating"; input.id = "fb-r" + i; input.value = i;
+    const label = document.createElement("label"); label.htmlFor = input.id; label.textContent = i;
+    scale.append(input, label);
+  }
+  const text = document.getElementById("fb-text"), count = document.getElementById("fb-count");
+  const send = document.getElementById("fb-send"), hint = document.getElementById("fb-hint");
+  text.addEventListener("input", () => { count.textContent = text.value.length + " / 2000"; hint.textContent = ""; });
+  scale.addEventListener("change", () => (hint.textContent = ""));
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (send.dataset.busy) return;
+    const picked = form.querySelector("input[name=fb-rating]:checked");
+    const rating = picked ? Number(picked.value) : null;
+    let words = text.value.trim();
+    if (!words && !rating) { hint.textContent = "Pick a number or write a few words first."; return; }
+    if (!words) words = "(rating only)";
+    send.dataset.busy = "1"; send.setAttribute("aria-disabled", "true"); hint.textContent = "Sending…";
+    let status = 0;
+    try { status = await backend.sendFeedback(state.session.id, words, rating); } catch (err) {}
+    delete send.dataset.busy; send.removeAttribute("aria-disabled");
+    if (status === 204 || status === 409) { state.feedback = "sent"; save(); renderFeedbackSent(form, FB_SENT); }
+    else if (status === 404) hint.textContent = "This session has ended, so feedback can't be linked to it anymore. Thank you anyway.";
+    else if (status === 400) hint.textContent = "Please keep it under 2000 characters.";
+    else hint.textContent = "We couldn't send it. Check your connection and try again.";
+  });
 }
 
 function selectNumber() {
