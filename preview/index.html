@@ -174,6 +174,19 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
 .feedback .actions { padding-top: 0; }
 .feedback.sent { display: flex; gap: 14px; align-items: flex-start; }
 .feedback.sent .dot { margin-top: 8px; background: var(--ok); }
+.feedback.sent strong { display: block; }
+
+/* Pass it on (final screen) */
+.share { display: grid; gap: 14px; padding-top: 8px; border-top: 2px solid var(--fg); }
+.share + .share { border-top-width: 1px; border-top-color: var(--line); }
+.share .label { padding-top: 14px; }
+.msg { margin: 0; padding: 14px 16px; border-left: 3px solid var(--clone); background: var(--surface); border-radius: 0 6px 6px 0;
+  font-size: 1rem; white-space: pre-line; max-width: 34em; }
+.share .actions { padding-top: 0; gap: 8px; }
+.share .btn { min-height: 48px; padding: 14px 20px; }
+.share .ghost { min-height: 48px; display: inline-flex; align-items: center; text-decoration: none; }
+.share .sms { display: none; }
+@media (pointer: coarse) { .share .sms { display: inline-flex; } }
 
 /* Info panels (About / Safety) */
 .panel { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; padding-inline: 20px; padding-block: calc(env(safe-area-inset-top, 0px) + 20px) 96px; z-index: 5; }
@@ -470,6 +483,29 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
         <span class="hint" id="fb-hint" role="status"></span>
       </div>
     </form>
+    <section class="share" data-share="family" aria-labelledby="share-family-h">
+      <span class="label">Pass it on</span>
+      <h3 id="share-family-h">Warn your family.</h3>
+      <p class="muted">These calls usually target parents and grandparents. Send them one simple rule before anyone calls them.</p>
+      <p class="msg" data-msg></p>
+      <div class="actions">
+        <button class="btn" type="button" data-native hidden>Send to family</button>
+        <a class="ghost sms" data-sms href="#">Messages</a>
+        <a class="ghost" data-wa href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="ghost" type="button" data-copy>Copy message</button>
+      </div>
+    </section>
+    <section class="share" data-share="friend" aria-labelledby="share-friend-h">
+      <h3 id="share-friend-h">Tell a friend about FakeVoice.</h3>
+      <p class="muted">Don't tell them what happens. It works best as a surprise.</p>
+      <p class="msg" data-msg></p>
+      <div class="actions">
+        <button class="btn" type="button" data-native hidden>Share</button>
+        <a class="ghost sms" data-sms href="#">Messages</a>
+        <a class="ghost" data-wa href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="ghost" type="button" data-copy>Copy message</button>
+      </div>
+    </section>
     <div class="actions">
       <button class="ghost" type="button" data-panel="safety">How your voice was handled</button>
     </div>
@@ -647,7 +683,49 @@ function wire(screen) {
     timers.push(setTimeout(() => { const s = document.getElementById("slow"); if (s) s.hidden = false; }, 20000));
   }
   if (screen === "reveal") renderDeletion();
-  if (screen === "done") wireFeedback();
+  if (screen === "done") { wireFeedback(); wireShare(); }
+}
+
+/* ---- Pass it on -------------------------------------------------------------------
+   Two spoiler-free messages. Neither says the callback uses your own voice: that
+   surprise is the experience. ?from= tells us which button a visitor came from and
+   carries nothing about the sender. Switch SHARE_URL to the root at public launch. */
+const SHARE_URL = "https://fakevoice.org/preview/";
+const SHARES = {
+  family: {
+    text: "Quick family rule: if anyone calls sounding like me (or any of us) and asks for money or help in a hurry, hang up and call me back on my usual number, even if the voice sounds exactly right. AI can copy voices now. Let's pick a family code word we can ask for.",
+    from: "family", copied: "Copied",
+  },
+  friend: {
+    text: "I just tried FakeVoice. It takes about 2 minutes. Don't look anything up first.",
+    from: "friend", copied: "Copied",
+  },
+};
+function wireShare() {
+  stage.querySelectorAll("[data-share]").forEach(box => {
+    const cfg = SHARES[box.dataset.share];
+    const url = SHARE_URL + "?from=" + cfg.from;
+    const full = cfg.text + "\n" + url;
+    box.querySelector("[data-msg]").textContent = full;
+    box.querySelector("[data-sms]").href = "sms:?&body=" + encodeURIComponent(full);
+    box.querySelector("[data-wa]").href = "https://wa.me/?text=" + encodeURIComponent(full);
+    const native = box.querySelector("[data-native]");
+    if (navigator.share) {
+      native.hidden = false;
+      native.addEventListener("click", () => {
+        navigator.share({ text: cfg.text, url }).catch(() => {}); /* cancelled or blocked: the other buttons remain */
+      });
+    }
+    const copy = box.querySelector("[data-copy]"), label = copy.textContent;
+    copy.addEventListener("click", () => {
+      const done = () => { copy.textContent = cfg.copied; setTimeout(() => (copy.textContent = label), 1800); };
+      const fallback = () => {
+        const r = document.createRange(); r.selectNodeContents(box.querySelector("[data-msg]"));
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      };
+      try { navigator.clipboard.writeText(full).then(done, fallback); } catch (e) { fallback(); }
+    });
+  });
 }
 
 /* ---- Feedback ---------------------------------------------------------------------
