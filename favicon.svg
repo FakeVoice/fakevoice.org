@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="FakeVoice icon">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="72%">
+      <stop offset="0%" stop-color="#1A2B4E"/>
+      <stop offset="100%" stop-color="#070C18"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <g>
+    <!-- 本人の声（白） -->
+    <rect x="52"  y="196" width="44" height="120" rx="22" fill="#FFFFFF"/>
+    <rect x="120" y="136" width="44" height="240" rx="22" fill="#FFFFFF"/>
+    <rect x="188" y="166" width="44" height="180" rx="22" fill="#FFFFFF"/>
+    <!-- 複製された声（アンバー・同じ波形） -->
+    <rect x="280" y="196" width="44" height="120" rx="22" fill="#FFB020"/>
+    <rect x="348" y="136" width="44" height="240" rx="22" fill="#FFB020"/>
+    <rect x="416" y="166" width="44" height="180" rx="22" fill="#FFB020"/>
+  </g>
+</svg>
