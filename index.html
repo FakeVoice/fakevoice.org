@@ -1,23 +1,833 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FakeVoice</title>
-  <meta name="description" content="A familiar voice on the phone is not proof of who is calling.">
-  <style>
-    :root { color-scheme: light dark; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; padding: 16px; }
-    main { max-width: 32rem; text-align: center; }
-    h1 { font-size: 2rem; margin: 0 0 .5rem; }
-    p { line-height: 1.5; }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<style>[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}</style>
 </head>
 <body>
-  <main>
-    <h1>FakeVoice</h1>
-    <p>A familiar voice on the phone is not proof of who is calling.</p>
-    <p>Coming soon. Contact: <a href="mailto:hello@fakevoice.org">hello@fakevoice.org</a></p>
-  </main>
+<title>FakeVoice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow left-aligned column, one action per screen. The page goes dark
+   and sparse while the user waits for the callback, then returns to calm for the lesson. */
+:root {
+  --bg: #F5F6F9;        /* cool off-white, biased toward the brand navy */
+  --fg: #101A2E;        /* brand base navy */
+  --muted: #56627D;
+  --line: #D9DEE8;
+  --surface: #FFFFFF;
+  --accent: #2A3E78;    /* brand indigo: actions */
+  --on-accent: #FFFFFF;
+  --clone: #A86400;     /* brand amber, darkened for light ground: marks the AI voice */
+  --ok: #1F7A4D;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Sans 3", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --step-0: 1.0625rem; --step-1: 1.25rem; --step-2: 1.75rem; --step-3: clamp(2.25rem, 6vw, 3.5rem); --step-4: clamp(2.6rem, 8.5vw, 5rem);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0B1222; --fg: #EEF1F7; --muted: #9AA7C2; --line: #24324F; --surface: #121C33;
+  --accent: #A9B9EC; --on-accent: #0B1222; --clone: #FFB020; --ok: #5BC08A; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #0B1222; --fg: #EEF1F7; --muted: #9AA7C2; --line: #24324F; --surface: #121C33;
+  --accent: #A9B9EC; --on-accent: #0B1222; --clone: #FFB020; --ok: #5BC08A; color-scheme: dark;
+}
+/* Waiting + callback: the brand's deepest ink in either theme. */
+body.tense {
+  --bg: #070C18; --fg: #FFFFFF; --muted: #8592AE; --line: #1C2741; --surface: #0E1628;
+  --accent: #FFFFFF; --on-accent: #070C18; --clone: #FFB020; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 400 var(--step-0)/1.55 var(--body);
+  padding-inline: 20px; padding-block: 0 96px;
+  transition: background-color .9s ease, color .9s ease;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 40rem; margin-inline: auto; }
+
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 20px; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 1.05rem/1 var(--display); font-stretch: 110%; letter-spacing: .01em; color: var(--fg); text-decoration: none; }
+.brand svg { width: 26px; height: 26px; }
+nav.links { display: flex; gap: 20px; }
+nav.links button { all: unset; cursor: pointer; color: var(--muted); font-size: .95rem; }
+nav.links button:hover, nav.links button:focus-visible { color: var(--fg); text-decoration: underline; text-underline-offset: 4px; }
+body.tense nav.links { visibility: hidden; }
+
+main { padding-block: clamp(32px, 9vh, 96px) 0; }
+.screen { display: flex; flex-direction: column; gap: 24px; animation: rise .5s ease both; }
+@keyframes rise { from { transform: translateY(8px); opacity: .001; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .screen { animation: none; } body { transition: none; } .pulse::after { animation: none !important; } }
+
+h1, h2 { font-family: var(--display); font-stretch: 112%; font-weight: 750; line-height: 1.02; letter-spacing: -.015em; margin: 0; text-wrap: balance; }
+h1 { font-size: var(--step-4); }
+h2 { font-size: var(--step-3); }
+h3 { font: 700 var(--step-1)/1.2 var(--display); font-stretch: 108%; margin: 0; }
+p { margin: 0; max-width: 34em; }
+.lede { font-size: var(--step-1); color: var(--fg); }
+.muted { color: var(--muted); }
+.small { font-size: .9rem; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: .95rem; }
+.facts span + span::before { content: "·"; margin-right: 14px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding-top: 8px; }
+.btn {
+  appearance: none; border: 0; cursor: pointer; text-decoration: none;
+  background: var(--accent); color: var(--on-accent);
+  font: 600 1.05rem/1 var(--body); padding: 18px 26px; border-radius: 6px;
+  display: inline-flex; align-items: center; gap: 10px; min-height: 56px;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:focus-visible, .ghost:focus-visible, input:focus-visible + label .box, nav.links button:focus-visible { outline: 3px solid var(--clone); outline-offset: 3px; }
+.btn[aria-disabled="true"] { opacity: .38; cursor: not-allowed; filter: none; }
+.ghost { appearance: none; background: none; border: 1px solid var(--line); color: var(--fg); font: 500 .95rem/1 var(--body); padding: 12px 16px; border-radius: 6px; cursor: pointer; }
+
+/* Consent */
+.terms { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.terms li { padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; gap: 12px; }
+.terms li::before { content: "No"; flex: 0 0 2.2em; font: 500 .8rem/1.9 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.check { position: relative; }
+.check input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.check label { display: flex; gap: 14px; align-items: flex-start; cursor: pointer; font-weight: 600; }
+.box { flex: 0 0 24px; height: 24px; border: 2px solid var(--fg); border-radius: 4px; display: grid; place-items: center; margin-top: 1px; }
+.box svg { width: 16px; height: 16px; opacity: 0; }
+.check input:checked + label .box { background: var(--fg); }
+.check input:checked + label .box svg { opacity: 1; color: var(--bg); }
+.what { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; max-width: 34em; }
+.checks { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.check label { font-weight: 500; }
+.inline { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; color: var(--fg); }
+.inline:focus-visible { outline: 3px solid var(--clone); outline-offset: 2px; }
+.draft { font: 500 .78rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--clone); }
+.panel h3 { padding-top: 8px; }
+.panel table { border-collapse: collapse; font-size: .95rem; }
+.panel th, .panel td { text-align: left; vertical-align: top; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); }
+.tablewrap { overflow-x: auto; }
+.hint { color: var(--clone); font-size: .95rem; min-height: 1.5em; }
+
+/* Call screen */
+.dial { display: grid; gap: 22px; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.label { font: 500 .78rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.number { font: 500 clamp(1.7rem, 7vw, 2.6rem)/1.1 var(--mono); letter-spacing: -.01em; user-select: all; font-variant-numeric: tabular-nums; }
+.code { font: 500 clamp(2.4rem, 11vw, 3.6rem)/1 var(--mono); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+.row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+.row > div { display: grid; gap: 10px; min-width: 0; }
+.callnow { display: none; }
+@media (pointer: coarse) { .callnow { display: inline-flex; } }
+.status { display: flex; align-items: center; gap: 12px; color: var(--muted); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: 0 0 10px; }
+.pulse { position: relative; }
+.pulse::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid currentColor; animation: ring 1.8s ease-out infinite; }
+@keyframes ring { from { transform: scale(.4); opacity: .9; } to { transform: scale(1.6); opacity: 0; } }
+.dot.live { background: var(--ok); color: var(--ok); }
+.dot.clone { background: var(--clone); color: var(--clone); }
+.expiry { font-variant-numeric: tabular-nums; }
+
+/* Tense screens */
+.sparse { min-height: 46vh; justify-content: center; }
+.phone-icon { width: 56px; height: 56px; color: var(--clone); }
+
+/* Reveal */
+.reveal h1 { font-size: clamp(2.5rem, 9vw, 5.25rem); }
+.reveal h1 em { font-style: normal; color: var(--clone); }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--fg); }
+.steps li { padding: 18px 16px 4px 0; display: grid; gap: 8px; align-content: start; }
+.steps li + li { padding-left: 16px; border-left: 1px solid var(--line); }
+.steps .n { font: 500 .8rem/1 var(--mono); color: var(--muted); }
+@media (max-width: 560px) {
+  .steps { grid-template-columns: 1fr; }
+  .steps li, .steps li + li { padding: 16px 0; border-left: 0; border-bottom: 1px solid var(--line); }
+}
+.remember { font: 700 var(--step-1)/1.3 var(--display); font-stretch: 108%; }
+.deletion { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.deletion .dot { margin-top: 8px; }
+.deletion.done .dot { background: var(--ok); }
+.deletion strong { display: block; }
+hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100%; }
+
+/* Feedback (final screen) */
+.feedback { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.feedback fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
+.feedback legend { padding: 0; font-weight: 600; }
+.scale { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.scale input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.scale label { display: grid; place-items: center; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+  font: 500 .95rem/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--fg); background: var(--bg); }
+.scale input:checked + label { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.scale input:focus-visible + label { outline: 3px solid var(--clone); outline-offset: 2px; }
+.scale-ends { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: .85rem; }
+.feedback .field { display: grid; gap: 8px; }
+.feedback .field label { font-weight: 600; }
+.feedback textarea { width: 100%; min-height: 7.5em; resize: vertical; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--fg); font: 400 1rem/1.5 var(--body); /* 16px+ keeps iOS from zooming on focus */ }
+.feedback textarea:focus-visible { outline: 3px solid var(--clone); outline-offset: 2px; }
+.feedback .meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.feedback .count { font-variant-numeric: tabular-nums; }
+.feedback .actions { padding-top: 0; }
+.feedback.sent { display: flex; gap: 14px; align-items: flex-start; }
+.feedback.sent .dot { margin-top: 8px; background: var(--ok); }
+.feedback.sent strong { display: block; }
+
+/* Pass it on (final screen) */
+.share { display: grid; gap: 14px; padding-top: 8px; border-top: 2px solid var(--fg); }
+.share + .share { border-top-width: 1px; border-top-color: var(--line); }
+.share .label { padding-top: 14px; }
+.msg { margin: 0; padding: 14px 16px; border-left: 3px solid var(--clone); background: var(--surface); border-radius: 0 6px 6px 0;
+  font-size: 1rem; white-space: pre-line; max-width: 34em; }
+.share .actions { padding-top: 0; gap: 8px; }
+.share .btn { min-height: 48px; padding: 14px 20px; }
+.share .ghost { min-height: 48px; display: inline-flex; align-items: center; text-decoration: none; }
+.share .sms { display: none; }
+@media (pointer: coarse) { .share .sms { display: inline-flex; } }
+
+/* Info panels (About / Safety) */
+.panel { position: fixed; inset: 0; background: var(--bg); overflow-y: auto; padding-inline: 20px; padding-block: calc(env(safe-area-inset-top, 0px) + 20px) 96px; z-index: 5; }
+.panel .wrap { display: grid; gap: 20px; }
+.panel ul { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; max-width: 34em; }
+.panel h2 { font-size: var(--step-2); padding-top: 24px; }
+
+/* Prototype bar: stands in for phone-system events until the backend is connected */
+.proto { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: #FFB020; color: #070C18;
+  padding-inline: 16px; padding-block: 10px calc(env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; font-size: .9rem; }
+.proto b { font-weight: 700; }
+.proto .ctrls { display: flex; gap: 8px; flex-wrap: wrap; }
+.proto button { appearance: none; border: 1px solid #070C18; background: transparent; color: #070C18; font: 600 .85rem/1 var(--body); padding: 9px 12px; border-radius: 5px; cursor: pointer; }
+.proto button.primary { background: #070C18; color: #FFB020; }
+.proto button:disabled { opacity: .35; cursor: default; }
+</style>
+
+<header class="top wrap">
+  <a class="brand" href="#" id="home" aria-label="FakeVoice, start over">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="2" y="12" width="4" height="8" rx="2" fill="currentColor"/>
+      <rect x="9" y="7" width="4" height="18" rx="2" fill="currentColor"/>
+      <rect x="16" y="10" width="4" height="12" rx="2" fill="var(--clone)"/>
+      <rect x="23" y="5" width="4" height="22" rx="2" fill="var(--clone)"/>
+    </svg>
+    FakeVoice
+  </a>
+  <nav class="links">
+    <button type="button" data-panel="about">About</button>
+    <button type="button" data-panel="safety">Safety</button>
+  </nav>
+</header>
+
+<main class="wrap" id="stage" aria-live="polite"></main>
+
+<section class="panel" id="panel-about" hidden aria-label="About FakeVoice">
+  <div class="wrap">
+    <header class="top"><span class="brand">FakeVoice</span><button class="ghost" type="button" data-close>Close</button></header>
+    <h2>Why FakeVoice exists</h2>
+    <p>A few seconds of someone's speech is now enough for AI to produce a convincing copy of their voice. Scammers use this to call people while sounding like a child, a parent, or a friend.</p>
+    <p>Warnings about this are easy to forget. Hearing it for yourself is not. FakeVoice is a short, safe experience that lets you hear the problem first-hand and leaves you with three simple habits.</p>
+    <p class="muted small">FakeVoice is an independent educational project. It is not a voice-cloning service.</p>
+  </div>
+</section>
+
+<section class="panel" id="panel-safety" hidden aria-label="How FakeVoice handles your voice">
+  <div class="wrap">
+    <header class="top"><span class="brand">FakeVoice</span><button class="ghost" type="button" data-close>Close</button></header>
+    <h2>How your voice is handled</h2>
+    <ul>
+      <li>FakeVoice only ever calls back the number that called it. You cannot enter anyone else's number.</li>
+      <li>Your voice is processed temporarily, for this one session only.</li>
+      <li>Nothing can be downloaded, exported, or shared, by you or anyone else.</li>
+      <li>You cannot type text for the voice to say. What it says is fixed in advance.</li>
+      <li>No reusable voice model is kept. Each session starts from nothing.</li>
+      <li>The recording and the generated voice are deleted right after the callback, and never kept longer than 10 minutes. The site only tells you they are deleted after the system confirms it.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="panel" id="panel-privacy" hidden aria-label="Privacy Policy">
+  <div class="wrap">
+    <header class="top"><span class="brand">FakeVoice</span><button class="ghost" type="button" data-close>Close</button></header>
+    <span class="draft">Draft · 2026-11-18 · not yet reviewed by a lawyer</span>
+    <h2>Privacy Policy</h2>
+    <p>FakeVoice ("we") runs fakevoice.org and the FakeVoice phone experience. This policy explains what we collect, why, how long we keep it, and who processes it for us.</p>
+    <h3>Who can use FakeVoice</h3>
+    <p>FakeVoice is for people 13 and older. We do not knowingly collect information from children under 13. If you are under 18, a parent or guardian should know you are using it. FakeVoice is not available to people in Illinois.</p>
+    <h3>What we collect and how long we keep it</h3>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead>
+      <tbody>
+        <tr><td>Your call audio (only the parts where you speak)</td><td>To make a temporary AI copy of your voice for the callback</td><td>Deleted right after the callback ends or fails; never more than 10 minutes</td></tr>
+        <tr><td>The temporary AI voice copy</td><td>To speak to you in the callback</td><td>Deleted at the same time as the audio</td></tr>
+        <tr><td>Your phone number</td><td>To call you back</td><td>Used only for the callback; not stored by us after it (our phone provider keeps call records, see below)</td></tr>
+        <tr><td>Session record (random session ID, consent text version, the boxes you checked, time, the call's provider ID)</td><td>To show that you agreed before we recorded</td><td>Kept as a consent record; contains no audio and no phone number</td></tr>
+        <tr><td>Basic website logs from our hosting providers</td><td>Security and reliability</td><td>As set by those providers</td></tr>
+      </tbody>
+    </table></div>
+    <p>We do not sell or share your information for advertising, we do not use it to train AI models, and we do not let anyone download your recording or voice copy. Your voice copy is never used to call anyone except you, once, in the callback you asked for.</p>
+    <p>We do not keep transcripts of your call. During the call, speech is converted to text in real time so the AI can respond; that text is not stored by us.</p>
+    <h3>Service providers</h3>
+    <p>We use these providers only to run the experience:</p>
+    <ul>
+      <li>Twilio (phone calls; keeps call records such as numbers, times and durations under its own policy)</li>
+      <li>Deepgram (real-time speech-to-text during the call)</li>
+      <li>OpenAI (generates the questions' follow-ups during the first call)</li>
+      <li>Fish Audio (creates the temporary voice copy and speaks it; we delete the copy through its API)</li>
+      <li>Cloudflare and GitHub (website hosting and network)</li>
+    </ul>
+    <h3>Your choices</h3>
+    <ul>
+      <li>Don't check the consent boxes, and nothing is recorded.</li>
+      <li>Hang up at any time; anything recorded so far is deleted.</li>
+      <li>Questions or deletion requests: hello@fakevoice.org.</li>
+    </ul>
+    <h3>Changes</h3>
+    <p>We will update this page and its date if anything changes.</p>
+  </div>
+</section>
+
+<section class="panel" id="panel-terms" hidden aria-label="Terms of Use">
+  <div class="wrap">
+    <header class="top"><span class="brand">FakeVoice</span><button class="ghost" type="button" data-close>Close</button></header>
+    <span class="draft">Draft · 2026-11-18 · not yet reviewed by a lawyer</span>
+    <h2>Terms of Use</h2>
+    <p>By using fakevoice.org or calling the FakeVoice number, you agree to these terms.</p>
+    <h3>What FakeVoice is</h3>
+    <p>An educational experience that shows how convincing AI-generated voices can be, so people can protect themselves from voice-cloning scams. It is not a voice-cloning service.</p>
+    <h3>Who can use it</h3>
+    <ul>
+      <li>You must be 13 or older. If you are under 18, a parent or guardian should know you are using it.</li>
+      <li>You must not be in Illinois.</li>
+      <li>You must use your own voice and call from your own phone number.</li>
+    </ul>
+    <h3>What you agree not to do</h3>
+    <ul>
+      <li>Use someone else's voice, play a recording, or call from a number that isn't yours.</li>
+      <li>Try to capture, record or extract the AI-generated voice from the callback.</li>
+      <li>Try to make the system say harmful, deceptive or abusive things, or to target other people.</li>
+      <li>Interfere with or overload the service.</li>
+    </ul>
+    <h3>How your voice is handled</h3>
+    <p>See the <button type="button" class="inline" data-panel="privacy">Privacy Policy</button>. In short: your call is recorded, a temporary AI copy of your voice is used once to call you back, and both are deleted right after.</p>
+    <h3>No warranty</h3>
+    <p>FakeVoice is provided as is, for free, as an educational experiment. It may be unavailable or change at any time. Calls may incur charges from your phone carrier (for example international calls).</p>
+    <h3>Limitation of liability</h3>
+    <p>To the extent the law allows, FakeVoice and the people running it are not liable for indirect or consequential damages arising from using it.</p>
+    <h3>Contact</h3>
+    <p>hello@fakevoice.org</p>
+  </div>
+</section>
+
+<div class="proto" role="region" aria-label="Prototype controls">
+  <span><b>Prototype.</b> <span id="proto-msg">Phone steps are simulated on this page.</span></span>
+  <span class="ctrls">
+    <button type="button" class="primary" id="proto-next">Simulate</button>
+    <button type="button" id="proto-reset">Restart</button>
+  </span>
+</div>
+
+<template id="t-landing">
+  <section class="screen">
+    <h1>How much do you trust a familiar voice?</h1>
+    <p class="lede">A short interactive experience about AI-generated voices and trust over the phone.</p>
+    <p class="facts"><span>About 2 minutes</span><span>No downloads</span><span>Temporary voice data only</span></p>
+    <div class="actions"><button class="btn" type="button" data-go="consent">Begin Experience</button></div>
+  </section>
+</template>
+
+<template id="t-consent">
+  <section class="screen">
+    <h2>Before you continue</h2>
+    <p class="lede">FakeVoice is a short experience about AI-generated voices. Here is exactly what happens:</p>
+    <ul class="what">
+      <li>You call our number and answer a few everyday questions. <strong>The call is recorded.</strong></li>
+      <li><strong>AI uses your recording to make a temporary copy of your voice.</strong></li>
+      <li><strong>Shortly after, we call you back on the number you called from, using an AI-generated voice.</strong></li>
+      <li>The recording and the voice copy are <strong>deleted right after the callback</strong>, and never kept longer than 10 minutes. You can't download them, and they are never used to call anyone else or reused later.</li>
+    </ul>
+    <p class="small muted">We keep a record that you agreed (time, this text's version, and the boxes below). It contains no recording and no phone number. See our <button type="button" class="inline" data-panel="privacy">Privacy Policy</button> and <button type="button" class="inline" data-panel="terms">Terms</button>.</p>
+    <div class="checks">
+      <div class="check"><input type="checkbox" id="c-age"><label for="c-age"><span class="box"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span>I am 13 or older. If I am under 18, a parent or guardian knows I am using FakeVoice.</span></label></div>
+      <div class="check"><input type="checkbox" id="c-il"><label for="c-il"><span class="box"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span>I am not in Illinois right now and don't live there.</span></label></div>
+      <div class="check"><input type="checkbox" id="c-consent"><label for="c-consent"><span class="box"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></span><span>I agree to this recording, to the temporary AI copy of my voice, and to receiving the AI-voice callback described above.</span></label></div>
+    </div>
+    <p class="small muted">You must use your own voice and your own phone number.</p>
+    <div class="actions">
+      <button class="btn" type="button" id="consent-go" aria-disabled="true">Continue</button>
+      <span class="hint" id="consent-hint" role="status"></span>
+    </div>
+  </section>
+</template>
+
+<template id="t-call">
+  <section class="screen">
+    <h2>Ready to begin?</h2>
+    <p class="lede">Call the number below from the phone you want to use for this experience.</p>
+    <div class="dial">
+      <div class="row">
+        <div><span class="label">Call</span><span class="number" id="num">+1 (650) 668-3304</span></div>
+        <button class="ghost" type="button" id="copy">Copy number</button>
+      </div>
+      <div class="row">
+        <div><span class="label">When prompted, enter your session code</span><span class="code" data-code></span></div>
+        <span class="small muted expiry">Code expires in <span id="expiry">10:00</span></span>
+      </div>
+      <a class="btn callnow" id="callnow" href="tel:+16506683304">Call Now</a>
+    </div>
+    <p class="small muted">Use your own voice and phone number. Keep this page open during the experience.</p>
+    <p class="status" role="status"><span class="dot pulse"></span>Waiting for your call</p>
+  </section>
+</template>
+
+<template id="t-expired">
+  <section class="screen">
+    <h2>This code has expired.</h2>
+    <p class="lede">Session codes only last 10 minutes, so nobody can use an old one.</p>
+    <div class="actions"><button class="btn" type="button" data-go="call" data-new>Get a new code</button></div>
+  </section>
+</template>
+
+<template id="t-unanswered">
+  <section class="screen">
+    <h2>We couldn't reach you.</h2>
+    <p class="lede">We called back, but nobody answered. Nothing from this session will be kept.</p>
+    <div class="actions"><button class="btn" type="button" data-go="consent" data-new>Try again</button></div>
+  </section>
+</template>
+
+<template id="t-failed">
+  <section class="screen">
+    <h2>Something went wrong on our side.</h2>
+    <p class="lede">We couldn't finish the experience this time. Nothing from this session will be kept.</p>
+    <div class="actions"><button class="btn" type="button" data-go="consent" data-new>Try again</button></div>
+  </section>
+</template>
+
+<template id="t-connected">
+  <section class="screen">
+    <h2>You're connected.</h2>
+    <p class="lede">Answer in your own words, a sentence or two each. There's no need to rush.</p>
+    <p class="status" role="status"><span class="dot live pulse"></span>Call in progress</p>
+    <p class="small muted">This page updates on its own. You can switch to your phone and come back.</p>
+  </section>
+</template>
+
+<template id="t-complete">
+  <section class="screen sparse">
+    <h2>Call complete.</h2>
+    <p class="lede">Keep your phone nearby.</p>
+    <p class="small muted" id="slow" hidden>This may take a few more moments. Please keep this page open.</p>
+  </section>
+</template>
+
+<template id="t-ringing">
+  <section class="screen sparse">
+    <svg class="phone-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.6 10.8a15.1 15.1 0 006.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 013 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1z"/></svg>
+    <h1>Answer your phone.</h1>
+  </section>
+</template>
+
+<template id="t-active">
+  <section class="screen sparse">
+    <p class="status" role="status"><span class="dot clone pulse"></span>On the call</p>
+    <h2>Listen.</h2>
+  </section>
+</template>
+
+<template id="t-reveal">
+  <section class="screen reveal">
+    <h1>A familiar voice is <em>no longer proof</em> of identity.</h1>
+    <p class="lede">The voice you just heard was generated by AI using the conversation from your first call.</p>
+    <p class="lede">If an AI can sound like you, it can also sound like someone you trust.</p>
+    <hr class="sep">
+    <h2 style="font-size:var(--step-2)">If a call feels wrong:</h2>
+    <ol class="steps">
+      <li><span class="n">1</span><h3>Hang up.</h3><p class="muted">Do not let urgency pressure you into acting right away.</p></li>
+      <li><span class="n">2</span><h3>Call back.</h3><p class="muted">Contact the person on a phone number you already know.</p></li>
+      <li><span class="n">3</span><h3>Verify another way.</h3><p class="muted">Use another trusted channel, or a question only they would know.</p></li>
+    </ol>
+    <p class="remember">Hang up → Call back → Verify</p>
+    <div class="deletion" id="deletion" role="status">
+      <span class="dot pulse"></span>
+      <div><strong>Deleting your temporary voice data…</strong><span class="muted small">This page will confirm once it is done.</span></div>
+    </div>
+    <div class="actions"><button class="btn" type="button" data-go="done">Finish</button></div>
+  </section>
+</template>
+
+<template id="t-done">
+  <section class="screen">
+    <h2>Thanks for taking part.</h2>
+    <p class="lede">The next time a familiar voice asks for something urgent, you'll know what to do.</p>
+    <p class="remember">Hang up → Call back → Verify</p>
+    <form class="feedback" id="feedback" novalidate>
+      <h3>How was it?</h3>
+      <fieldset>
+        <legend>How much did the voice sound like you?</legend>
+        <div class="scale" id="fb-scale"></div>
+        <div class="scale-ends" aria-hidden="true"><span>Not at all</span><span>Exactly like me</span></div>
+      </fieldset>
+      <div class="field">
+        <label for="fb-text">Anything you'd like to tell us?</label>
+        <textarea id="fb-text" maxlength="2000" placeholder="What surprised you, what felt off, what you'd change…"></textarea>
+        <div class="meta small muted">
+          <span>Please don't include personal details. Optional.</span>
+          <span class="count" id="fb-count" aria-live="off">0 / 2000</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" type="submit" id="fb-send">Send feedback</button>
+        <span class="hint" id="fb-hint" role="status"></span>
+      </div>
+    </form>
+    <section class="share" data-share="family" aria-labelledby="share-family-h">
+      <span class="label">Pass it on</span>
+      <h3 id="share-family-h">Warn your family.</h3>
+      <p class="muted">These calls usually target parents and grandparents. Send them one simple rule before anyone calls them.</p>
+      <p class="msg" data-msg></p>
+      <div class="actions">
+        <button class="btn" type="button" data-native hidden>Send to family</button>
+        <a class="ghost sms" data-sms href="#">Messages</a>
+        <a class="ghost" data-wa href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="ghost" type="button" data-copy>Copy message</button>
+      </div>
+    </section>
+    <section class="share" data-share="friend" aria-labelledby="share-friend-h">
+      <h3 id="share-friend-h">Tell a friend about FakeVoice.</h3>
+      <p class="muted">Don't tell them what happens. It works best as a surprise.</p>
+      <p class="msg" data-msg></p>
+      <div class="actions">
+        <button class="btn" type="button" data-native hidden>Share</button>
+        <a class="ghost sms" data-sms href="#">Messages</a>
+        <a class="ghost" data-wa href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="ghost" type="button" data-copy>Copy message</button>
+      </div>
+    </section>
+    <div class="actions">
+      <button class="ghost" type="button" data-panel="safety">How your voice was handled</button>
+    </div>
+  </section>
+</template>
+
+<script>
+/* ---- Backend ----------------------------------------------------------------------
+   Live mode talks to the call server (see fakevoice/README.md):
+     POST /api/sessions {consent:true}  -> {id, code, phone, expires_at}
+     GET  /api/sessions/:id             -> {id, state, updated_at, expires_at}
+     GET  /api/sessions/:id/events      -> SSE, event name = state, data = snapshot
+   Anywhere else (e.g. the claude.ai preview) the page runs in demo mode and the
+   prototype bar stands in for the phone system. The server's state is authoritative. */
+const API = "https://voice.fakevoice.org";
+/* Must match the consent text on screen (fakevoice/docs/legal/consent-screen.md); bump together. */
+const CONSENT = { consent: true, age_13_or_older: true, not_in_illinois: true, consent_version: "2026-11-18" };
+const LIVE = /^(localhost|127\.0\.0\.1|(www\.)?fakevoice\.org)$/.test(location.hostname) && !/demo/.test(location.hash);
+const STATES = ["waiting_for_call", "call_connected", "call_in_progress", "call_completed", "processing",
+  "callback_ringing", "callback_active", "callback_completed", "deleting", "deletion_confirmed",
+  "expired", "clone_failed", "callback_unanswered", "deletion_pending"];
+
+const LiveBackend = {
+  async createSession() {
+    const r = await fetch(API + "/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONSENT) });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    return { id: j.id, code: fmtCode(j.code), phone: j.phone, expiresAt: typeof j.expires_at === "number" ? j.expires_at * 1000 : Date.parse(j.expires_at) };
+  },
+  async snapshot(id) {
+    const r = await fetch(API + "/api/sessions/" + encodeURIComponent(id));
+    if (r.status === 404) return { state: "expired" };
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  },
+  subscribe(id, onState) {
+    const es = new EventSource(API + "/api/sessions/" + encodeURIComponent(id) + "/events");
+    STATES.forEach(name => es.addEventListener(name, () => onState(name)));
+    return () => es.close();
+  },
+  /* 204 stored · 400 bad input · 404 session forgotten (30 min after finishing) · 409 already sent */
+  async sendFeedback(id, text, rating) {
+    const body = { session_id: id, text };
+    if (rating) body.rating = rating;
+    const r = await fetch(API + "/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    return r.status;
+  },
+};
+const DemoBackend = {
+  async createSession() {
+    const n = String(Math.floor(Math.random() * 1e6)).padStart(6, "0");
+    return { id: "demo", code: fmtCode(n), phone: "+16506683304", expiresAt: Date.now() + 10 * 60 * 1000 };
+  },
+  async sendFeedback() { await new Promise(r => setTimeout(r, 400)); return 204; },
+};
+const backend = LIVE ? LiveBackend : DemoBackend;
+
+function fmtCode(c) { c = String(c).replace(/\D/g, ""); return c.slice(0, 3) + " " + c.slice(3); }
+function fmtPhone(p) { const d = String(p).replace(/\D/g, ""); return d.length === 11 && d[0] === "1" ? "+1 (" + d.slice(1, 4) + ") " + d.slice(4, 7) + "-" + d.slice(7) : p; }
+
+/* Server state -> screen. Deletion states keep the reveal screen and only change its status line. */
+const SCREEN_FOR = {
+  waiting_for_call: "call", call_connected: "connected", call_in_progress: "connected",
+  call_completed: "complete", processing: "complete", callback_ringing: "ringing", callback_active: "active",
+  callback_completed: "reveal", deleting: "reveal", deletion_confirmed: "reveal", deletion_pending: "reveal",
+  expired: "expired", clone_failed: "failed", callback_unanswered: "unanswered",
+};
+
+/* ---- State ------------------------------------------------------------------------ */
+const stage = document.getElementById("stage");
+const TENSE = new Set(["complete", "ringing", "active"]);
+const fresh = () => ({ screen: "landing", session: null, deletion: "deleting" });
+let state = fresh();
+let timers = [], unsubscribe = null;
+
+function save() { try { sessionStorage.setItem("fv-state", JSON.stringify(state)); } catch (e) {} }
+function load() { try { const s = JSON.parse(sessionStorage.getItem("fv-state")); if (s && s.screen) state = s; } catch (e) {} }
+function clearTimers() { timers.forEach(t => { clearInterval(t); clearTimeout(t); }); timers = []; }
+function stopListening() { if (unsubscribe) { unsubscribe(); unsubscribe = null; } }
+
+function show(screen) {
+  clearTimers();
+  state.screen = screen; save();
+  document.body.classList.toggle("tense", TENSE.has(screen));
+  stage.replaceChildren(document.getElementById("t-" + screen).content.cloneNode(true));
+  wire(screen);
+  syncProto();
+  window.scrollTo(0, 0);
+}
+
+function apply(serverState) {
+  if (serverState === "deletion_confirmed") state.deletion = "done";
+  else if (serverState === "deletion_pending") state.deletion = "retrying";
+  else if (serverState === "deleting" || serverState === "callback_completed") state.deletion = state.deletion === "done" ? "done" : "deleting";
+  const screen = SCREEN_FOR[serverState];
+  if (!screen) return;
+  if (["expired", "failed", "unanswered"].includes(screen) || serverState === "deletion_confirmed") stopListening();
+  if (screen !== state.screen) show(screen); else { save(); renderDeletion(); }
+}
+
+function listen() {
+  if (!LIVE || !state.session || unsubscribe) return;
+  unsubscribe = backend.subscribe(state.session.id, apply);
+}
+/* Coming back from the Phone app: ask the server where we are. */
+async function resync() {
+  if (!LIVE || !state.session || ["landing", "consent", "done"].includes(state.screen)) return;
+  try { const snap = await backend.snapshot(state.session.id); apply(snap.state); } catch (e) {}
+  if (!["expired", "failed", "unanswered", "done"].includes(state.screen) && state.deletion !== "done") { stopListening(); listen(); }
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") resync(); });
+
+const DELETION_TEXT = {
+  deleting: ["Deleting your temporary voice data…", "This page will confirm once it is done."],
+  retrying: ["Still deleting your temporary voice data…", "This is taking longer than usual. The system keeps trying until it is gone."],
+  done: ["Your temporary voice data has been deleted.", "This voice cannot be accessed or reused."],
+};
+function renderDeletion() {
+  const d = document.getElementById("deletion");
+  if (!d) return;
+  const [title, sub] = DELETION_TEXT[state.deletion] || DELETION_TEXT.deleting;
+  d.classList.toggle("done", state.deletion === "done");
+  d.querySelector(".dot").classList.toggle("pulse", state.deletion !== "done");
+  const box = d.querySelector("div"); box.replaceChildren();
+  const strong = document.createElement("strong"); strong.textContent = title;
+  const span = document.createElement("span"); span.className = "muted small"; span.textContent = sub;
+  box.append(strong, span);
+}
+
+function wire(screen) {
+  stage.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+    if (b.hasAttribute("data-new")) { stopListening(); state.session = null; state.deletion = "deleting"; }
+    show(b.dataset.go);
+  }));
+  stage.querySelectorAll("[data-panel]").forEach(b => b.addEventListener("click", () => openPanel(b.dataset.panel)));
+
+  if (screen === "consent") {
+    const boxes = ["c-age", "c-il", "c-consent"].map(id => document.getElementById(id));
+    const go = document.getElementById("consent-go"), hint = document.getElementById("consent-hint");
+    const allChecked = () => boxes.every(b => b.checked);
+    boxes.forEach(b => b.addEventListener("change", () => { go.setAttribute("aria-disabled", String(!allChecked())); hint.textContent = ""; }));
+    go.addEventListener("click", async () => {
+      if (!boxes[0].checked) { hint.textContent = "FakeVoice is for people 13 and older."; return; }
+      if (!allChecked()) { hint.textContent = "Check all three boxes to continue."; return; }
+      if (go.dataset.busy) return;
+      go.dataset.busy = "1"; hint.textContent = "";
+      try {
+        state.session = await backend.createSession(); state.deletion = "deleting"; state.feedback = null;
+        show("call"); listen();
+      } catch (e) {
+        hint.textContent = "We couldn't start a session. Check your connection and try again.";
+      } finally { delete go.dataset.busy; }
+    });
+  }
+  if (screen === "call") {
+    if (!state.session) { show("consent"); return; }
+    stage.querySelector("[data-code]").textContent = state.session.code;
+    document.getElementById("num").textContent = fmtPhone(state.session.phone);
+    /* Commas pause, then the phone sends the code itself once the call connects. */
+    document.getElementById("callnow").href = "tel:" + state.session.phone + ",," + state.session.code.replace(/\D/g, "");
+    const out = document.getElementById("expiry");
+    const tick = () => {
+      const left = Math.max(0, state.session.expiresAt - Date.now());
+      out.textContent = Math.floor(left / 60000) + ":" + String(Math.floor(left / 1000) % 60).padStart(2, "0");
+      if (left === 0 && !LIVE) apply("expired");
+    };
+    tick(); timers.push(setInterval(tick, 1000));
+    document.getElementById("copy").addEventListener("click", e => {
+      const btn = e.currentTarget;
+      const done = () => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = "Copy number"), 1800); };
+      try { navigator.clipboard.writeText(state.session.phone).then(done, selectNumber); } catch (err) { selectNumber(); }
+    });
+  }
+  if (screen === "complete") {
+    timers.push(setTimeout(() => { const s = document.getElementById("slow"); if (s) s.hidden = false; }, 20000));
+  }
+  if (screen === "reveal") renderDeletion();
+  if (screen === "done") { wireFeedback(); wireShare(); }
+}
+
+/* ---- Pass it on -------------------------------------------------------------------
+   Two spoiler-free messages. Neither says the callback uses your own voice: that
+   surprise is the experience. ?from= tells us which button a visitor came from and
+   carries nothing about the sender. Points at the public root, not /preview/. */
+const SHARE_URL = "https://fakevoice.org/";
+const SHARES = {
+  family: {
+    text: "Quick family rule: if anyone calls sounding like me (or any of us) and asks for money or help in a hurry, hang up and call me back on my usual number, even if the voice sounds exactly right. AI can copy voices now. Let's pick a family code word we can ask for.",
+    from: "family", copied: "Copied",
+  },
+  friend: {
+    text: "I just tried FakeVoice. It takes about 2 minutes. Don't look anything up first.",
+    from: "friend", copied: "Copied",
+  },
+};
+function wireShare() {
+  stage.querySelectorAll("[data-share]").forEach(box => {
+    const cfg = SHARES[box.dataset.share];
+    const url = SHARE_URL + "?from=" + cfg.from;
+    const full = cfg.text + "\n" + url;
+    box.querySelector("[data-msg]").textContent = full;
+    box.querySelector("[data-sms]").href = "sms:?&body=" + encodeURIComponent(full);
+    box.querySelector("[data-wa]").href = "https://wa.me/?text=" + encodeURIComponent(full);
+    const native = box.querySelector("[data-native]");
+    if (navigator.share) {
+      native.hidden = false;
+      native.addEventListener("click", () => {
+        navigator.share({ text: cfg.text, url }).catch(() => {}); /* cancelled or blocked: the other buttons remain */
+      });
+    }
+    const copy = box.querySelector("[data-copy]"), label = copy.textContent;
+    copy.addEventListener("click", () => {
+      const done = () => { copy.textContent = cfg.copied; setTimeout(() => (copy.textContent = label), 1800); };
+      const fallback = () => {
+        const r = document.createRange(); r.selectNodeContents(box.querySelector("[data-msg]"));
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      };
+      try { navigator.clipboard.writeText(full).then(done, fallback); } catch (e) { fallback(); }
+    });
+  });
+}
+
+/* ---- Feedback ---------------------------------------------------------------------
+   One per session, server-side. The API needs text; the rating alone is not enough,
+   so a rating with no words is sent with a short placeholder text. */
+const FB_SENT = ["Thank you. Your feedback was sent.", "It is stored only with this session's random ID, never with your phone number."];
+function renderFeedbackSent(form, lines) {
+  form.className = "feedback sent"; form.replaceChildren();
+  const dot = document.createElement("span"); dot.className = "dot";
+  const box = document.createElement("div");
+  const strong = document.createElement("strong"); strong.textContent = lines[0];
+  const span = document.createElement("span"); span.className = "muted small"; span.textContent = lines[1];
+  box.append(strong, span); form.append(dot, box);
+}
+function wireFeedback() {
+  const form = document.getElementById("feedback");
+  if (!form) return;
+  if (state.feedback === "sent") { renderFeedbackSent(form, FB_SENT); return; }
+  if (!state.session) { form.hidden = true; return; }
+  const scale = document.getElementById("fb-scale");
+  for (let i = 1; i <= 10; i++) {
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = "fb-rating"; input.id = "fb-r" + i; input.value = i;
+    const label = document.createElement("label"); label.htmlFor = input.id; label.textContent = i;
+    scale.append(input, label);
+  }
+  const text = document.getElementById("fb-text"), count = document.getElementById("fb-count");
+  const send = document.getElementById("fb-send"), hint = document.getElementById("fb-hint");
+  text.addEventListener("input", () => { count.textContent = text.value.length + " / 2000"; hint.textContent = ""; });
+  scale.addEventListener("change", () => (hint.textContent = ""));
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (send.dataset.busy) return;
+    const picked = form.querySelector("input[name=fb-rating]:checked");
+    const rating = picked ? Number(picked.value) : null;
+    let words = text.value.trim();
+    if (!words && !rating) { hint.textContent = "Pick a number or write a few words first."; return; }
+    if (!words) words = "(rating only)";
+    send.dataset.busy = "1"; send.setAttribute("aria-disabled", "true"); hint.textContent = "Sending…";
+    let status = 0;
+    try { status = await backend.sendFeedback(state.session.id, words, rating); } catch (err) {}
+    delete send.dataset.busy; send.removeAttribute("aria-disabled");
+    if (status === 204 || status === 409) { state.feedback = "sent"; save(); renderFeedbackSent(form, FB_SENT); }
+    else if (status === 404) hint.textContent = "This session has ended, so feedback can't be linked to it anymore. Thank you anyway.";
+    else if (status === 400) hint.textContent = "Please keep it under 2000 characters.";
+    else hint.textContent = "We couldn't send it. Check your connection and try again.";
+  });
+}
+
+function selectNumber() {
+  const r = document.createRange(); r.selectNodeContents(document.getElementById("num"));
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+
+/* ---- Panels ----------------------------------------------------------------------- */
+let lastFocus = null;
+function openPanel(name) {
+  lastFocus = document.activeElement;
+  const p = document.getElementById("panel-" + name); p.hidden = false; p.querySelector("[data-close]").focus();
+}
+document.querySelectorAll("nav.links [data-panel], .panel [data-panel]").forEach(b => b.addEventListener("click", () => {
+  const from = b.closest(".panel"); if (from) from.hidden = true;
+  openPanel(b.dataset.panel);
+}));
+document.querySelectorAll("[data-close]").forEach(b => b.addEventListener("click", () => {
+  b.closest(".panel").hidden = true; if (lastFocus) lastFocus.focus();
+}));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".panel").forEach(p => (p.hidden = true));
+});
+
+/* ---- Prototype bar (demo mode only) ----------------------------------------------- */
+const DEMO_STEPS = [
+  { from: "call", ev: "call_connected", label: "Simulate: call connects" },
+  { from: "connected", ev: "call_completed", label: "Simulate: first call ends" },
+  { from: "complete", ev: "callback_ringing", label: "Simulate: callback rings" },
+  { from: "ringing", ev: "callback_active", label: "Simulate: user answers" },
+  { from: "active", ev: "callback_completed", label: "Simulate: callback ends" },
+  { from: "reveal", ev: "deletion_confirmed", label: "Simulate: deletion confirmed" },
+];
+const proto = document.querySelector(".proto"), protoNext = document.getElementById("proto-next"), protoMsg = document.getElementById("proto-msg");
+function pending() {
+  if (state.screen === "reveal" && state.deletion === "done") return null;
+  return DEMO_STEPS.find(e => e.from === state.screen) || null;
+}
+function syncProto() {
+  if (LIVE) return;
+  const p = pending();
+  protoNext.disabled = !p;
+  protoNext.textContent = p ? p.label : "Simulate";
+  protoMsg.textContent = p ? "Phone steps are simulated on this page." : "Nothing to simulate on this screen.";
+}
+if (LIVE) { proto.hidden = true; document.body.style.paddingBottom = "48px"; }
+protoNext.addEventListener("click", () => { const p = pending(); if (p) apply(p.ev); });
+function restart() { stopListening(); state = fresh(); show("landing"); }
+document.getElementById("proto-reset").addEventListener("click", restart);
+document.getElementById("home").addEventListener("click", e => { e.preventDefault(); restart(); });
+
+load();
+if (!state.deletion) state.deletion = "deleting";
+show(state.screen);
+listen(); resync();
+</script>
 </body>
 </html>
