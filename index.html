@@ -20,6 +20,7 @@
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#101A2E">
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "d7f5ebe293b5492c884af2b37f99d197"}'></script>
 <style>[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}</style>
 </head>
 <body>
@@ -192,6 +193,20 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
 .feedback .meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .feedback .count { font-variant-numeric: tabular-nums; }
 .feedback .actions { padding-top: 0; }
+#rating .hint { color: var(--muted); min-height: 1.5em; }
+#rating .hint.err { color: var(--clone); }
+/* Everyone's ratings: one bar per number, in the same 10 columns as the buttons below. */
+.dist { margin: 0; display: grid; gap: 8px; }
+.dist .bars { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; align-items: end; height: 120px;
+  border-bottom: 1px solid var(--line); }
+.dist .bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 4px; }
+.dist .bar i { display: block; width: 100%; min-height: 2px; background: var(--muted); opacity: .45; border-radius: 3px 3px 0 0;
+  transition: height .4s ease; }
+.dist .bar.you i { background: var(--clone); opacity: 1; }
+.dist .bar b { font: 500 .75rem/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+.dist .bar.you b { color: var(--clone); }
+@media (prefers-reduced-motion: reduce) { .dist .bar i { transition: none; } }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .feedback.sent { display: flex; gap: 14px; align-items: flex-start; }
 .feedback.sent .dot { margin-top: 8px; background: var(--ok); }
 .feedback.sent strong { display: block; }
@@ -282,7 +297,7 @@ main.doc h1 { font-size: var(--step-3); }
     <header class="top"><span class="brand">FakeVoice</span><button class="ghost" type="button" data-close>Close</button></header>
     <!-- legal:privacy -->
     <h2>Privacy Policy</h2>
-    <p class="updated">Last updated: November 18, 2026</p>
+    <p class="updated">Last updated: November 25, 2026</p>
     <p>FakeVoice ("we") runs fakevoice.org and the FakeVoice phone experience. This policy explains what we collect, why, how long we keep it, and who processes it for us.</p>
     <h3>Who can use FakeVoice</h3>
     <p>FakeVoice is for people 13 and older. We do not knowingly collect information from children under 13. If you are under 18, a parent or guardian should know you are using it. FakeVoice is not available to people in Illinois.</p>
@@ -295,6 +310,7 @@ main.doc h1 { font-size: var(--step-3); }
         <tr><td>Your phone number</td><td>To call you back</td><td>Used only for the callback; not stored by us after it (our phone provider keeps call records, see below)</td></tr>
         <tr><td>Session record (random session ID, consent text version, the boxes you checked, time, the call's provider ID)</td><td>To show that you agreed before we recorded</td><td>Kept as a consent record; contains no audio and no phone number</td></tr>
         <tr><td>Feedback you choose to type on the last screen (and an optional 1-10 rating), linked only to the random session ID</td><td>To improve the experience</td><td>Kept until we no longer need it; please don't include personal details</td></tr>
+        <tr><td>Anonymous usage statistics: which steps of the experience a session reached and when, which share link (if any) brought a visitor, and page-view counts from Cloudflare Web Analytics (no cookies)</td><td>To see where the experience works or breaks</td><td>Kept in aggregate; contains no audio, no phone number and no IP address</td></tr>
         <tr><td>Basic website logs from our hosting providers</td><td>Security and reliability</td><td>As set by those providers</td></tr>
       </tbody>
     </table></div>
@@ -497,13 +513,20 @@ main.doc h1 { font-size: var(--step-3); }
     <h2>Thanks for taking part.</h2>
     <p class="lede">The next time a familiar voice asks for something urgent, you'll know what to do.</p>
     <p class="remember">Hang up → Call back → Verify</p>
-    <form class="feedback" id="feedback" novalidate>
-      <h3>How was it?</h3>
+    <section class="feedback" id="rating" aria-labelledby="rating-h">
+      <h3 id="rating-h">How much did the voice sound like you?</h3>
+      <figure class="dist" id="dist" hidden>
+        <div class="bars" id="dist-bars" aria-hidden="true"></div>
+        <figcaption class="small muted" id="dist-cap"></figcaption>
+      </figure>
       <fieldset>
-        <legend>How much did the voice sound like you?</legend>
+        <legend class="visually-hidden">Your rating from 1, not at all, to 10, exactly like you</legend>
         <div class="scale" id="fb-scale"></div>
         <div class="scale-ends" aria-hidden="true"><span>Not at all</span><span>Exactly like me</span></div>
       </fieldset>
+      <span class="hint" id="rating-hint" role="status"></span>
+    </section>
+    <form class="feedback" id="feedback" novalidate>
       <div class="field">
         <label for="fb-text">Anything you'd like to tell us?</label>
         <textarea id="fb-text" maxlength="2000" placeholder="What surprised you, what felt off, what you'd change…"></textarea>
@@ -513,7 +536,7 @@ main.doc h1 { font-size: var(--step-3); }
         </div>
       </div>
       <div class="actions">
-        <button class="btn" type="submit" id="fb-send">Send feedback</button>
+        <button class="btn" type="submit" id="fb-send">Send</button>
         <span class="hint" id="fb-hint" role="status"></span>
       </div>
     </form>
@@ -558,13 +581,31 @@ const API = "https://voice.fakevoice.org";
 /* Must match the consent text on screen (fakevoice/docs/legal/consent-screen.md); bump together. */
 const CONSENT = { consent: true, age_13_or_older: true, not_in_illinois: true, consent_version: "2026-11-18" };
 const LIVE = /^(localhost|127\.0\.0\.1|(www\.)?fakevoice\.org)$/.test(location.hostname) && !/demo/.test(location.hash);
+/* Share-link tag (?from=family, ?from=friend). Counted once per page load that carries it,
+   and kept in sessionStorage so the session it leads to can say which link it came from.
+   The server stores only the tag and a time. */
+const FROM_RE = /^[a-z0-9_-]{1,32}$/;
+const FROM = (() => {
+  let tag = null;
+  try { tag = new URLSearchParams(location.search).get("from"); } catch (e) {}
+  if (tag && FROM_RE.test(tag)) {
+    try { sessionStorage.setItem("fv-from", tag); } catch (e) {}
+    if (LIVE) {
+      const body = new Blob([JSON.stringify({ from: tag })], { type: "application/json" });
+      try { if (!navigator.sendBeacon(API + "/api/visit", body)) throw 0; }
+      catch (e) { fetch(API + "/api/visit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ from: tag }), keepalive: true }).catch(() => {}); }
+    }
+    return tag;
+  }
+  try { const kept = sessionStorage.getItem("fv-from"); return kept && FROM_RE.test(kept) ? kept : null; } catch (e) { return null; }
+})();
 const STATES = ["waiting_for_call", "call_connected", "call_in_progress", "call_completed", "processing",
   "callback_ringing", "callback_active", "callback_completed", "deleting", "deletion_confirmed",
   "expired", "clone_failed", "callback_unanswered", "deletion_pending"];
 
 const LiveBackend = {
   async createSession() {
-    const r = await fetch(API + "/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(CONSENT) });
+    const r = await fetch(API + "/api/sessions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(FROM ? { ...CONSENT, from: FROM } : CONSENT) });
     if (!r.ok) throw new Error("HTTP " + r.status);
     const j = await r.json();
     return { id: j.id, code: fmtCode(j.code), phone: j.phone, expiresAt: typeof j.expires_at === "number" ? j.expires_at * 1000 : Date.parse(j.expires_at) };
@@ -580,12 +621,19 @@ const LiveBackend = {
     STATES.forEach(name => es.addEventListener(name, () => onState(name)));
     return () => es.close();
   },
-  /* 204 stored · 400 bad input · 404 session forgotten (30 min after finishing) · 409 already sent */
-  async sendFeedback(id, text, rating) {
-    const body = { session_id: id };
-    if (text) body.text = text;
-    if (rating) body.rating = rating;
-    const r = await fetch(API + "/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  /* Rating: upsert, one vote per session, the last tap counts.
+     200 {counts:[c1..c10], total} · 400 bad input · 404 session forgotten (30 min after finishing) */
+  async sendRating(id, rating) {
+    const r = await fetch(API + "/api/feedback/rating", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: id, rating }) });
+    return { status: r.status, summary: r.ok ? await r.json() : null };
+  },
+  async ratingSummary() {
+    const r = await fetch(API + "/api/feedback/summary");
+    return r.ok ? r.json() : null;
+  },
+  /* Text: 204 stored · 400 bad input · 404 session forgotten · 409 already sent */
+  async sendText(id, text) {
+    const r = await fetch(API + "/api/feedback/text", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: id, text }) });
     return r.status;
   },
 };
@@ -594,7 +642,16 @@ const DemoBackend = {
     const n = String(Math.floor(Math.random() * 1e6)).padStart(6, "0");
     return { id: "demo", code: fmtCode(n), phone: "+16506683304", expiresAt: Date.now() + 10 * 60 * 1000 };
   },
-  async sendFeedback() { await new Promise(r => setTimeout(r, 400)); return 204; },
+  demoCounts: [1, 0, 2, 3, 5, 6, 9, 11, 7, 4], demoVote: null,
+  async sendRating(id, rating) {
+    await new Promise(r => setTimeout(r, 250));
+    const c = this.demoCounts.slice();
+    if (this.demoVote) c[this.demoVote - 1]--;
+    this.demoVote = rating; c[rating - 1]++; this.demoCounts = c;
+    return { status: 200, summary: { counts: c, total: c.reduce((a, b) => a + b, 0) } };
+  },
+  async ratingSummary() { const c = this.demoCounts; return { counts: c, total: c.reduce((a, b) => a + b, 0) }; },
+  async sendText() { await new Promise(r => setTimeout(r, 400)); return 204; },
 };
 const backend = LIVE ? LiveBackend : DemoBackend;
 
@@ -688,7 +745,7 @@ function wire(screen) {
       if (go.dataset.busy) return;
       go.dataset.busy = "1"; hint.textContent = "";
       try {
-        state.session = await backend.createSession(); state.deletion = "deleting"; state.feedback = null;
+        state.session = await backend.createSession(); state.deletion = "deleting"; state.feedback = null; state.rating = null;
         show("call"); listen();
       } catch (e) {
         hint.textContent = "We couldn't start a session. Check your connection and try again.";
@@ -718,7 +775,7 @@ function wire(screen) {
     timers.push(setTimeout(() => { const s = document.getElementById("slow"); if (s) s.hidden = false; }, 20000));
   }
   if (screen === "reveal") renderDeletion();
-  if (screen === "done") { wireFeedback(); wireShare(); }
+  if (screen === "done") { wireRating(); wireFeedback(); wireShare(); }
 }
 
 /* ---- Pass it on -------------------------------------------------------------------
@@ -764,9 +821,72 @@ function wireShare() {
 }
 
 /* ---- Feedback ---------------------------------------------------------------------
-   One per session, server-side. The API needs text; the rating alone is not enough,
-   so a rating with no words is sent with a short placeholder text. */
-const FB_SENT = ["Thank you. Your feedback was sent.", "It is stored only with this session's random ID, never with your phone number."];
+   Two separate parts. The rating is saved the moment a number is tapped and can be
+   changed any number of times (the server keeps the last one per session); after the
+   first save, everyone's ratings are shown as bars above the buttons. The text is sent
+   once, on its own. state.rating = this session's saved rating; state.feedback = "sent"
+   once the text has gone. */
+const FB_SENT = ["Thank you. Your message was sent.", "It is stored only with this session's random ID, never with your phone number."];
+function renderDist(summary, mine) {
+  const fig = document.getElementById("dist");
+  if (!fig || !summary || !Array.isArray(summary.counts) || summary.counts.length !== 10) return;
+  const counts = summary.counts.map(n => Math.max(0, Number(n) || 0));
+  const total = counts.reduce((a, b) => a + b, 0);
+  if (!total) return;
+  const max = Math.max(...counts);
+  const bars = document.getElementById("dist-bars");
+  if (bars.children.length !== 10) {
+    bars.replaceChildren();
+    for (let i = 0; i < 10; i++) { const d = document.createElement("div"); d.className = "bar"; d.append(document.createElement("b"), document.createElement("i")); bars.append(d); }
+  }
+  [...bars.children].forEach((d, i) => {
+    d.classList.toggle("you", mine === i + 1);
+    d.querySelector("b").textContent = counts[i] || "";
+    d.querySelector("i").style.height = Math.round((counts[i] / max) * 92) + "%";
+  });
+  const avg = counts.reduce((a, n, i) => a + n * (i + 1), 0) / total;
+  const people = total === 1 ? "1 rating" : total + " ratings";
+  document.getElementById("dist-cap").textContent =
+    "How everyone rated it: " + people + ", average " + avg.toFixed(1) + "." + (mine ? " Yours is highlighted." : "");
+  fig.hidden = false;
+}
+function wireRating() {
+  const box = document.getElementById("rating");
+  if (!box) return;
+  if (!state.session) { box.hidden = true; return; }
+  const scale = document.getElementById("fb-scale"), hint = document.getElementById("rating-hint");
+  for (let i = 1; i <= 10; i++) {
+    const input = document.createElement("input");
+    input.type = "radio"; input.name = "fb-rating"; input.id = "fb-r" + i; input.value = i;
+    if (state.rating === i) input.checked = true;
+    const label = document.createElement("label"); label.htmlFor = input.id; label.textContent = i;
+    scale.append(input, label);
+  }
+  const say = (msg, err) => { hint.textContent = msg; hint.classList.toggle("err", !!err); };
+  if (state.rating) {
+    say("Saved. Tap another number to change it.");
+    backend.ratingSummary().then(s => renderDist(s, state.rating)).catch(() => {});
+  }
+  /* Taps go out one at a time; while one is in flight only the latest tap is kept. */
+  let busy = false, queued = null;
+  async function push(value) {
+    if (busy) { queued = value; return; }
+    busy = true; say("Saving…");
+    let res = { status: 0 };
+    try { res = await backend.sendRating(state.session.id, value); } catch (err) {}
+    busy = false;
+    if (queued !== null) { const v = queued; queued = null; return push(v); }
+    if (res.status === 200) {
+      state.rating = value; save();
+      say("Saved. Tap another number to change it.");
+      renderDist(res.summary, value);
+    } else if (res.status === 404) {
+      say("This session has ended, so the rating can't be saved anymore. Thank you anyway.", true);
+      backend.ratingSummary().then(s => renderDist(s, null)).catch(() => {});
+    } else say("We couldn't save it. Check your connection and tap again.", true);
+  }
+  scale.addEventListener("change", e => push(Number(e.target.value)));
+}
 function renderFeedbackSent(form, lines) {
   form.className = "feedback sent"; form.replaceChildren();
   const dot = document.createElement("span"); dot.className = "dot";
@@ -780,27 +900,17 @@ function wireFeedback() {
   if (!form) return;
   if (state.feedback === "sent") { renderFeedbackSent(form, FB_SENT); return; }
   if (!state.session) { form.hidden = true; return; }
-  const scale = document.getElementById("fb-scale");
-  for (let i = 1; i <= 10; i++) {
-    const input = document.createElement("input");
-    input.type = "radio"; input.name = "fb-rating"; input.id = "fb-r" + i; input.value = i;
-    const label = document.createElement("label"); label.htmlFor = input.id; label.textContent = i;
-    scale.append(input, label);
-  }
   const text = document.getElementById("fb-text"), count = document.getElementById("fb-count");
   const send = document.getElementById("fb-send"), hint = document.getElementById("fb-hint");
   text.addEventListener("input", () => { count.textContent = text.value.length + " / 2000"; hint.textContent = ""; });
-  scale.addEventListener("change", () => (hint.textContent = ""));
   form.addEventListener("submit", async e => {
     e.preventDefault();
     if (send.dataset.busy) return;
-    const picked = form.querySelector("input[name=fb-rating]:checked");
-    const rating = picked ? Number(picked.value) : null;
     const words = text.value.trim();
-    if (!words && !rating) { hint.textContent = "Pick a number or write a few words first."; return; }
+    if (!words) { hint.textContent = "Write a few words first."; return; }
     send.dataset.busy = "1"; send.setAttribute("aria-disabled", "true"); hint.textContent = "Sending…";
     let status = 0;
-    try { status = await backend.sendFeedback(state.session.id, words, rating); } catch (err) {}
+    try { status = await backend.sendText(state.session.id, words); } catch (err) {}
     delete send.dataset.busy; send.removeAttribute("aria-disabled");
     if (status === 204 || status === 409) { state.feedback = "sent"; save(); renderFeedbackSent(form, FB_SENT); }
     else if (status === 404) hint.textContent = "This session has ended, so feedback can't be linked to it anymore. Thank you anyway.";

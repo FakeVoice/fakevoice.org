@@ -20,6 +20,7 @@
 <link rel="icon" href="/favicon.ico" sizes="32x32">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#101A2E">
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "d7f5ebe293b5492c884af2b37f99d197"}'></script>
 <style>[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}</style>
 <title>Terms of Use · FakeVoice</title>
 <link rel="canonical" href="https://fakevoice.org/terms">
@@ -191,6 +192,20 @@ hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100
 .feedback .meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .feedback .count { font-variant-numeric: tabular-nums; }
 .feedback .actions { padding-top: 0; }
+#rating .hint { color: var(--muted); min-height: 1.5em; }
+#rating .hint.err { color: var(--clone); }
+/* Everyone's ratings: one bar per number, in the same 10 columns as the buttons below. */
+.dist { margin: 0; display: grid; gap: 8px; }
+.dist .bars { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; align-items: end; height: 120px;
+  border-bottom: 1px solid var(--line); }
+.dist .bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; gap: 4px; }
+.dist .bar i { display: block; width: 100%; min-height: 2px; background: var(--muted); opacity: .45; border-radius: 3px 3px 0 0;
+  transition: height .4s ease; }
+.dist .bar.you i { background: var(--clone); opacity: 1; }
+.dist .bar b { font: 500 .75rem/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+.dist .bar.you b { color: var(--clone); }
+@media (prefers-reduced-motion: reduce) { .dist .bar i { transition: none; } }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .feedback.sent { display: flex; gap: 14px; align-items: flex-start; }
 .feedback.sent .dot { margin-top: 8px; background: var(--ok); }
 .feedback.sent strong { display: block; }
