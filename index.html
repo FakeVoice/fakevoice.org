@@ -858,7 +858,7 @@ function wire(screen) {
     stage.querySelectorAll("[data-code]").forEach(el => (el.textContent = state.session.code));
     stage.querySelectorAll("[data-num]").forEach(el => (el.textContent = fmtPhone(state.session.phone)));
     /* Commas pause, then the phone sends the code itself once the call connects. */
-    document.getElementById("callnow").href = "tel:" + state.session.phone + ",," + state.session.code.replace(/\D/g, "");
+    document.getElementById("callnow").href = "tel:" + state.session.phone + "," + state.session.code.replace(/\D/g, "");
     const outs = stage.querySelectorAll("[data-expiry]");
     const tick = () => {
       const left = Math.max(0, state.session.expiresAt - Date.now());
