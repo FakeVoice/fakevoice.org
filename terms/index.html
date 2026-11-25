@@ -140,8 +140,12 @@ p { margin: 0; max-width: 34em; }
 .code { font: 500 clamp(2.4rem, 11vw, 3.6rem)/1 var(--mono); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
 .row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
 .row > div { display: grid; gap: 10px; min-width: 0; }
-.callnow { display: none; }
-@media (pointer: coarse) { .callnow { display: inline-flex; } }
+/* Phone vs PC: touch screens get the one-tap call, everything else the number + code. */
+.on-pc { display: contents; }
+.on-phone { display: none; }
+@media (pointer: coarse) { .on-phone { display: contents; } .on-pc { display: none; } }
+.callnow { justify-content: center; font-size: 1.15rem; min-height: 64px; }
+.tnum { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .status { display: flex; align-items: center; gap: 12px; color: var(--muted); }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: 0 0 10px; }
 .pulse { position: relative; }

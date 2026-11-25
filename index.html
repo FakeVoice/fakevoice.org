@@ -141,8 +141,12 @@ p { margin: 0; max-width: 34em; }
 .code { font: 500 clamp(2.4rem, 11vw, 3.6rem)/1 var(--mono); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
 .row { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
 .row > div { display: grid; gap: 10px; min-width: 0; }
-.callnow { display: none; }
-@media (pointer: coarse) { .callnow { display: inline-flex; } }
+/* Phone vs PC: touch screens get the one-tap call, everything else the number + code. */
+.on-pc { display: contents; }
+.on-phone { display: none; }
+@media (pointer: coarse) { .on-phone { display: contents; } .on-pc { display: none; } }
+.callnow { justify-content: center; font-size: 1.15rem; min-height: 64px; }
+.tnum { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .status { display: flex; align-items: center; gap: 12px; color: var(--muted); }
 .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: 0 0 10px; }
 .pulse { position: relative; }
@@ -436,17 +440,28 @@ main.doc h1 { font-size: var(--step-3); }
 <template id="t-call">
   <section class="screen">
     <h2>Ready to begin?</h2>
-    <p class="lede">Call the number below from the phone you want to use for this experience.</p>
-    <div class="dial">
-      <div class="row">
-        <div><span class="label">Call</span><span class="number" id="num">+1 (650) 668-3304</span></div>
-        <button class="ghost" type="button" id="copy">Copy number</button>
+    <!-- Phone (touch, can dial): one big button. It dials number,,code, so the code goes in
+         during the greeting and the caller never has to type it. -->
+    <div class="on-phone">
+      <p class="lede">Tap to call from this phone. Your code goes in by itself.</p>
+      <div class="dial">
+        <a class="btn callnow" id="callnow" href="tel:+16506683304">Tap to call</a>
+        <p class="small muted">Calls <span class="tnum" data-num>+1 (650) 668-3304</span>. If the call asks for a code, enter <span class="tnum" data-code></span>. Expires in <span class="tnum" data-expiry>10:00</span>.</p>
       </div>
-      <div class="row">
-        <div><span class="label">When prompted, enter your session code</span><span class="code" data-code></span></div>
-        <span class="small muted expiry">Code expires in <span id="expiry">10:00</span></span>
+    </div>
+    <!-- PC, or anything we can't tell is a phone: dial by hand, so the code is required. -->
+    <div class="on-pc">
+      <p class="lede">Call this number from your phone, then enter this code when asked.</p>
+      <div class="dial">
+        <div class="row">
+          <div><span class="label">Call</span><span class="number" id="num" data-num>+1 (650) 668-3304</span></div>
+          <button class="ghost" type="button" id="copy">Copy number</button>
+        </div>
+        <div class="row">
+          <div><span class="label">Then enter this code</span><span class="code" data-code></span></div>
+          <span class="small muted expiry">Code expires in <span data-expiry>10:00</span></span>
+        </div>
       </div>
-      <a class="btn callnow" id="callnow" href="tel:+16506683304">Call Now</a>
     </div>
     <p class="small muted">Use your own voice and phone number. Keep this page open during the experience.</p>
     <p class="status" role="status"><span class="dot pulse"></span>Waiting for your call</p>
@@ -819,14 +834,14 @@ function wire(screen) {
   }
   if (screen === "call") {
     if (!state.session) { show("consent"); return; }
-    stage.querySelector("[data-code]").textContent = state.session.code;
-    document.getElementById("num").textContent = fmtPhone(state.session.phone);
+    stage.querySelectorAll("[data-code]").forEach(el => (el.textContent = state.session.code));
+    stage.querySelectorAll("[data-num]").forEach(el => (el.textContent = fmtPhone(state.session.phone)));
     /* Commas pause, then the phone sends the code itself once the call connects. */
     document.getElementById("callnow").href = "tel:" + state.session.phone + ",," + state.session.code.replace(/\D/g, "");
-    const out = document.getElementById("expiry");
+    const outs = stage.querySelectorAll("[data-expiry]");
     const tick = () => {
       const left = Math.max(0, state.session.expiresAt - Date.now());
-      out.textContent = Math.floor(left / 60000) + ":" + String(Math.floor(left / 1000) % 60).padStart(2, "0");
+      outs.forEach(o => (o.textContent = Math.floor(left / 60000) + ":" + String(Math.floor(left / 1000) % 60).padStart(2, "0")));
       if (left === 0 && !LIVE) apply("expired");
     };
     tick(); timers.push(setInterval(tick, 1000));
