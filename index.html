@@ -933,7 +933,7 @@ function wireShare() {
     box.querySelector("[data-sms]").href = "sms:?&body=" + encodeURIComponent(full);
     box.querySelector("[data-wa]").href = "https://wa.me/?text=" + encodeURIComponent(full);
     const x = box.querySelector("[data-x]");
-    if (x) x.href = "https://x.com/intent/post?text=" + encodeURIComponent(X_TEXT) + "&url=" + encodeURIComponent(SHARE_URL + "?from=x");
+    if (x) x.href = "https://x.com/intent/post?text=" + encodeURIComponent(X_TEXT) + "&url=" + encodeURIComponent(SHARE_URL + "?from=x") + "&via=FakeVoiceOrg";
     const ig = box.querySelector("[data-ig]");
     if (ig) { loadStory(); ig.addEventListener("click", () => shareStory(ig, box.querySelector("[data-ig-hint]"))); }
     const native = box.querySelector("[data-native]");
