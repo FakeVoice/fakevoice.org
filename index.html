@@ -174,6 +174,24 @@ p { margin: 0; max-width: 34em; }
 .deletion strong { display: block; }
 hr.sep { border: 0; border-top: 1px solid var(--line); margin: 8px 0; width: 100%; }
 
+/* Reveal: your voice next to the AI copy. White = the real voice, amber = the copy (brand rule). */
+.compare { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.compare .actions { padding-top: 0; }
+.plays { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .plays { grid-template-columns: 1fr; } }
+.play { appearance: none; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer; min-height: 64px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; }
+.play strong { display: block; font-weight: 600; }
+.play .ico { flex: 0 0 36px; height: 36px; border-radius: 50%; background: var(--fg); position: relative; }
+.play.ai .ico { background: var(--clone); }
+.play .ico::after { content: ""; position: absolute; left: 14px; top: 11px; border-style: solid; border-width: 7px 0 7px 11px;
+  border-color: transparent transparent transparent var(--bg); }
+.play[aria-pressed="true"] { border-color: var(--fg); }
+.play.ai[aria-pressed="true"] { border-color: var(--clone); }
+.play[aria-pressed="true"] .ico::after { left: 12px; top: 12px; width: 12px; height: 12px; border: 0; background: var(--bg); border-radius: 2px; }
+.play:focus-visible { outline: 3px solid var(--clone); outline-offset: 2px; }
+.play[disabled] { opacity: .5; cursor: default; }
+
 /* Feedback (final screen) */
 .feedback { display: grid; gap: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 .feedback fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
@@ -288,6 +306,7 @@ main.doc h1 { font-size: var(--step-3); }
       <li>You cannot type text for the voice to say. What it says is fixed in advance.</li>
       <li>No reusable voice model is kept. Each session starts from nothing.</li>
       <li>The recording and the generated voice are deleted right after the callback, and never kept longer than 10 minutes. The site only tells you they are deleted after the system confirms it.</li>
+      <li>On the last screen you can play two short clips, your recording and the AI voice, side by side. Only your session can play them, they can't be downloaded, and they are deleted when you leave that screen or press Delete, and never kept longer than 10 minutes.</li>
     </ul>
   </div>
 </section>
@@ -307,6 +326,7 @@ main.doc h1 { font-size: var(--step-3); }
       <tbody>
         <tr><td>Your call audio (only the parts where you speak)</td><td>To make a temporary AI copy of your voice for the callback</td><td>Deleted right after the callback ends or fails; never more than 10 minutes</td></tr>
         <tr><td>The temporary AI voice copy</td><td>To speak to you in the callback</td><td>Deleted at the same time as the audio</td></tr>
+        <tr><td>Two short comparison clips (about 5 seconds of your recording and a few seconds of the AI voice)</td><td>So you can compare them on the last screen; only your session can play them, and they can't be downloaded</td><td>Deleted when you leave the last screen; never more than 10 minutes</td></tr>
         <tr><td>Your phone number</td><td>To call you back</td><td>Used only for the callback; not stored by us after it (our phone provider keeps call records, see below)</td></tr>
         <tr><td>Session record (random session ID, consent text version, the boxes you checked, time, the call's provider ID)</td><td>To show that you agreed before we recorded</td><td>Kept as a consent record; contains no audio and no phone number</td></tr>
         <tr><td>Feedback you choose to type on the last screen (and an optional 1-10 rating), linked only to the random session ID</td><td>To improve the experience</td><td>Kept until we no longer need it; please don't include personal details</td></tr>
@@ -397,6 +417,7 @@ main.doc h1 { font-size: var(--step-3); }
       <li><strong>AI uses your recording to make a temporary copy of your voice.</strong></li>
       <li><strong>Shortly after, we call you back on the number you called from, using an AI-generated voice.</strong></li>
       <li>The recording and the voice copy are <strong>deleted right after the callback</strong>, and never kept longer than 10 minutes. You can't download them, and they are never used to call anyone else or reused later.</li>
+      <li>On the last screen you can play <strong>two short clips</strong> (a few seconds of your recording and a few seconds of the AI voice) to compare them. Only you can play them, and they are deleted when you leave that screen, and never kept longer than 10 minutes.</li>
     </ul>
     <p class="small muted">We keep a record that you agreed (time, this text's version, and the boxes below). It contains no recording and no phone number. See our <button type="button" class="inline" data-panel="privacy">Privacy Policy</button> and <button type="button" class="inline" data-panel="terms">Terms</button>.</p>
     <div class="checks">
@@ -492,6 +513,19 @@ main.doc h1 { font-size: var(--step-3); }
     <h1>A familiar voice is <em>no longer proof</em> of identity.</h1>
     <p class="lede">The voice you just heard was generated by AI using the conversation from your first call.</p>
     <p class="lede">If an AI can sound like you, it can also sound like someone you trust.</p>
+    <section class="compare" id="compare" hidden aria-labelledby="compare-h">
+      <h3 id="compare-h">Hear them side by side.</h3>
+      <div class="plays">
+        <button class="play" type="button" data-clip="you" aria-pressed="false"><span class="ico" aria-hidden="true"></span><span><strong>Your voice</strong><span class="small muted">From your first call</span></span></button>
+        <button class="play ai" type="button" data-clip="ai" aria-pressed="false"><span class="ico" aria-hidden="true"></span><span><strong>The AI copy</strong><span class="small muted">Made from that recording</span></span></button>
+      </div>
+      <p class="small muted">These clips are deleted when you leave this screen, and never kept longer than 10 minutes.</p>
+      <div class="actions"><button class="ghost" type="button" id="clips-delete">Delete these clips now</button></div>
+    </section>
+    <div class="deletion done" id="clips-gone" hidden role="status">
+      <span class="dot"></span>
+      <div><strong>Comparison clips deleted.</strong><span class="muted small">Your recording and the AI voice can no longer be played.</span></div>
+    </div>
     <hr class="sep">
     <h2 style="font-size:var(--step-2)">If a call feels wrong:</h2>
     <ol class="steps">
@@ -579,7 +613,7 @@ main.doc h1 { font-size: var(--step-3); }
    prototype bar stands in for the phone system. The server's state is authoritative. */
 const API = "https://voice.fakevoice.org";
 /* Must match the consent text on screen (fakevoice/docs/legal/consent-screen.md); bump together. */
-const CONSENT = { consent: true, age_13_or_older: true, not_in_illinois: true, consent_version: "2026-11-18" };
+const CONSENT = { consent: true, age_13_or_older: true, not_in_illinois: true, consent_version: "2026-11-25" };
 const LIVE = /^(localhost|127\.0\.0\.1|(www\.)?fakevoice\.org)$/.test(location.hostname) && !/demo/.test(location.hash);
 /* Share-link tag (?from=family, ?from=friend). Counted once per page load that carries it,
    and kept in sessionStorage so the session it leads to can say which link it came from.
@@ -618,8 +652,20 @@ const LiveBackend = {
   },
   subscribe(id, onState) {
     const es = new EventSource(API + "/api/sessions/" + encodeURIComponent(id) + "/events");
-    STATES.forEach(name => es.addEventListener(name, () => onState(name)));
+    STATES.forEach(name => es.addEventListener(name, e => {
+      let snap = null; try { snap = JSON.parse(e.data); } catch (err) {}
+      onState(name, snap);
+    }));
     return () => es.close();
+  },
+  /* Comparison clips: plain <audio> sources (no-store, inline, 404 once deleted). */
+  clipUrl(id, kind) { return API + "/api/sessions/" + encodeURIComponent(id) + "/clips/" + kind; },
+  /* 204 when gone. beacon: the page is going away, so fire and forget. */
+  async deleteClips(id, beacon) {
+    const url = API + "/api/sessions/" + encodeURIComponent(id) + "/clips/delete";
+    if (beacon && navigator.sendBeacon && navigator.sendBeacon(url)) return 204;
+    const r = await fetch(url, { method: "POST", keepalive: true });
+    return r.status;
   },
   /* Rating: upsert, one vote per session, the last tap counts.
      200 {counts:[c1..c10], total} · 400 bad input · 404 session forgotten (30 min after finishing) */
@@ -652,6 +698,17 @@ const DemoBackend = {
   },
   async ratingSummary() { const c = this.demoCounts; return { counts: c, total: c.reduce((a, b) => a + b, 0) }; },
   async sendText() { await new Promise(r => setTimeout(r, 400)); return 204; },
+  /* Demo clips: two short tones (low = you, high = the copy), made in the browser. */
+  clipUrl(id, kind) {
+    const rate = 8000, n = rate * 1.2, f = kind === "ai" ? 523 : 392, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const str = (o, t) => [...t].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, "data"); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.sin(2 * Math.PI * f * i / rate) * 6000 * Math.min(1, (n - i) / 800), true);
+    return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+  },
+  async deleteClips() { await new Promise(r => setTimeout(r, 400)); return 204; },
 };
 const backend = LIVE ? LiveBackend : DemoBackend;
 
@@ -680,6 +737,7 @@ function stopListening() { if (unsubscribe) { unsubscribe(); unsubscribe = null;
 
 function show(screen) {
   clearTimers();
+  if (state.screen === "reveal" && screen !== "reveal") leaveReveal();
   state.screen = screen; save();
   document.body.classList.toggle("tense", TENSE.has(screen));
   stage.replaceChildren(document.getElementById("t-" + screen).content.cloneNode(true));
@@ -688,14 +746,18 @@ function show(screen) {
   window.scrollTo(0, 0);
 }
 
-function apply(serverState) {
+function apply(serverState, snap) {
+  if (snap && typeof snap.clips === "boolean") {
+    if (snap.clips && !state.clipsGone) state.clips = true;
+    else if (!snap.clips && state.clips) { state.clips = false; state.clipsGone = true; stopClip(); }
+  }
   if (serverState === "deletion_confirmed") state.deletion = "done";
   else if (serverState === "deletion_pending") state.deletion = "retrying";
   else if (serverState === "deleting" || serverState === "callback_completed") state.deletion = state.deletion === "done" ? "done" : "deleting";
   const screen = SCREEN_FOR[serverState];
   if (!screen) return;
-  if (["expired", "failed", "unanswered"].includes(screen) || serverState === "deletion_confirmed") stopListening();
-  if (screen !== state.screen) show(screen); else { save(); renderDeletion(); }
+  if (["expired", "failed", "unanswered"].includes(screen) || (serverState === "deletion_confirmed" && state.clipsGone)) stopListening();
+  if (screen !== state.screen) show(screen); else { save(); renderDeletion(); renderClips(); }
 }
 
 function listen() {
@@ -705,8 +767,9 @@ function listen() {
 /* Coming back from the Phone app: ask the server where we are. */
 async function resync() {
   if (!LIVE || !state.session || ["landing", "consent", "done"].includes(state.screen)) return;
-  try { const snap = await backend.snapshot(state.session.id); apply(snap.state); } catch (e) {}
-  if (!["expired", "failed", "unanswered", "done"].includes(state.screen) && state.deletion !== "done") { stopListening(); listen(); }
+  try { const snap = await backend.snapshot(state.session.id); apply(snap.state, snap); } catch (e) {}
+  const open = state.deletion !== "done" || (state.screen === "reveal" && !state.clipsGone);
+  if (!["expired", "failed", "unanswered", "done"].includes(state.screen) && open) { stopListening(); listen(); }
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") resync(); });
 
@@ -718,7 +781,9 @@ const DELETION_TEXT = {
 function renderDeletion() {
   const d = document.getElementById("deletion");
   if (!d) return;
-  const [title, sub] = DELETION_TEXT[state.deletion] || DELETION_TEXT.deleting;
+  let [title, sub] = DELETION_TEXT[state.deletion] || DELETION_TEXT.deleting;
+  if (state.deletion === "done" && state.clips && !state.clipsGone)
+    [title, sub] = ["Your recording and voice copy have been deleted.", "Only the two short comparison clips above remain, until you leave this screen."];
   d.classList.toggle("done", state.deletion === "done");
   d.querySelector(".dot").classList.toggle("pulse", state.deletion !== "done");
   const box = d.querySelector("div"); box.replaceChildren();
@@ -745,7 +810,7 @@ function wire(screen) {
       if (go.dataset.busy) return;
       go.dataset.busy = "1"; hint.textContent = "";
       try {
-        state.session = await backend.createSession(); state.deletion = "deleting"; state.feedback = null; state.rating = null;
+        state.session = await backend.createSession(); state.deletion = "deleting"; state.feedback = null; state.rating = null; state.clips = undefined; state.clipsGone = false;
         show("call"); listen();
       } catch (e) {
         hint.textContent = "We couldn't start a session. Check your connection and try again.";
@@ -774,7 +839,7 @@ function wire(screen) {
   if (screen === "complete") {
     timers.push(setTimeout(() => { const s = document.getElementById("slow"); if (s) s.hidden = false; }, 20000));
   }
-  if (screen === "reveal") renderDeletion();
+  if (screen === "reveal") { renderDeletion(); wireClips(); }
   if (screen === "done") { wireRating(); wireFeedback(); wireShare(); }
 }
 
@@ -919,6 +984,58 @@ function wireFeedback() {
   });
 }
 
+/* ---- Comparison clips (reveal screen) -----------------------------------------------
+   Shown only while the server says clips exist. Deleted when the visitor presses Delete,
+   leaves the screen (Finish), or the page is hidden or closed; the server sweeps them
+   within 10 minutes anyway. "Deleted" is only shown after the server confirmed it. */
+let player = null;
+function stopClip() {
+  if (player) { player.pause(); player.removeAttribute("src"); player.load(); player = null; }
+  document.querySelectorAll(".play").forEach(b => b.setAttribute("aria-pressed", "false"));
+}
+function renderClips() {
+  const box = document.getElementById("compare"), gone = document.getElementById("clips-gone");
+  if (!box) return;
+  box.hidden = !(state.clips && !state.clipsGone);
+  gone.hidden = !state.clipsGone;
+  renderDeletion();
+}
+function wireClips() {
+  if (!LIVE && state.session && state.clips === undefined) state.clips = true;   /* demo */
+  renderClips();
+  const box = document.getElementById("compare");
+  box.querySelectorAll(".play").forEach(b => b.addEventListener("click", () => {
+    const was = b.getAttribute("aria-pressed") === "true";
+    stopClip();
+    if (was || !state.session) return;
+    player = new Audio(backend.clipUrl(state.session.id, b.dataset.clip));
+    b.setAttribute("aria-pressed", "true");
+    player.addEventListener("ended", stopClip);
+    player.addEventListener("error", () => { stopClip(); box.querySelector(".small.muted").textContent = "That clip couldn't be played. It may already have been deleted."; });
+    player.play().catch(() => {});
+  }));
+  const del = document.getElementById("clips-delete");
+  del.addEventListener("click", async () => {
+    if (del.dataset.busy) return;
+    del.dataset.busy = "1"; del.textContent = "Deleting…"; stopClip();
+    box.querySelectorAll(".play").forEach(b => (b.disabled = true));
+    let status = 0;
+    try { status = await backend.deleteClips(state.session.id, false); } catch (e) {}
+    delete del.dataset.busy;
+    if (status === 204 || status === 404) { state.clips = false; state.clipsGone = true; save(); renderClips(); }
+    else { del.textContent = "Couldn't delete. Try again"; box.querySelectorAll(".play").forEach(b => (b.disabled = false)); }
+  });
+}
+function leaveReveal(beacon) {
+  stopClip();
+  if (!state.session || state.clipsGone) return;
+  state.clips = false; state.clipsGone = true; save();
+  backend.deleteClips(state.session.id, !!beacon).catch(() => {});
+  stopListening();
+}
+addEventListener("pagehide", () => { if (state.screen === "reveal") leaveReveal(true); });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && state.screen === "reveal") { leaveReveal(true); renderClips(); } });
+
 function selectNumber() {
   const r = document.createRange(); r.selectNodeContents(document.getElementById("num"));
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
@@ -966,7 +1083,7 @@ function syncProto() {
 }
 if (LIVE) { proto.hidden = true; document.body.style.paddingBottom = "48px"; }
 protoNext.addEventListener("click", () => { const p = pending(); if (p) apply(p.ev); });
-function restart() { stopListening(); state = fresh(); show("landing"); }
+function restart() { if (state.screen === "reveal") leaveReveal(); stopListening(); state = fresh(); show("landing"); }
 document.getElementById("proto-reset").addEventListener("click", restart);
 document.getElementById("home").addEventListener("click", e => { e.preventDefault(); restart(); });
 
