@@ -80,7 +80,13 @@ body.tense header.top nav.links { visibility: hidden; }
 nav.links a { color: var(--muted); font-size: .95rem; text-decoration: none; }
 nav.links a:hover, nav.links a:focus-visible { color: var(--fg); text-decoration: underline; text-underline-offset: 4px; }
 footer.foot { padding-block: 56px 8px; }
-footer.foot nav.links { flex-wrap: wrap; gap: 8px 20px; }
+footer.foot nav.links { flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+footer.foot nav.links a.icon { display: inline-flex; padding: 2px; }
+footer.foot nav.links a.icon svg { width: 18px; height: 18px; }
+footer.foot .built { color: var(--muted); margin-bottom: 14px; }
+footer.foot .built a { color: var(--muted); text-underline-offset: 3px; }
+footer.foot .built a:hover, footer.foot .built a:focus-visible { color: var(--fg); }
+body:not([data-screen="landing"]) .landing-only, body:not([data-screen="landing"]) footer.foot nav.links a.landing-only { display: none; }
 
 main { padding-block: clamp(32px, 9vh, 96px) 0; }
 .screen { display: flex; flex-direction: column; gap: 24px; animation: rise .5s ease both; }
